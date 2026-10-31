@@ -1,0 +1,27 @@
+# Track ONLY our own code and docs. Everything else (WordPress core,
+# uploads, other plugins/themes, wp-config.php) stays out of Git.
+# This file lives at the WordPress root (LocalWP: <site>/app/public).
+
+/*
+!.gitignore
+!README.md
+!CLAUDE.md
+!docs/
+!wp-content/
+
+wp-content/*
+!wp-content/themes/
+!wp-content/plugins/
+
+wp-content/themes/*
+!wp-content/themes/renuga-child/
+
+wp-content/plugins/*
+!wp-content/plugins/dm-core/
+
+# Junk inside our own folders
+.DS_Store
+Thumbs.db
+node_modules/
+*.log
+.env

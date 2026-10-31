@@ -1,0 +1,17 @@
+/* Secret Garden design tokens. Light theme only. */
+:root {
+	/* Colours */
+	--rn-cream: #F8F5E9;
+	--rn-sage: #A7C1A8;
+	--rn-forest: #2F4A3A;   /* proposed, confirm against the design board */
+	--rn-rose: #B4726A;     /* about 3.5:1 on cream: large text and decoration only */
+	--rn-gold: #C9A646;     /* placeholder, small accents only, confirm against the board */
+
+	/* Typography */
+	--rn-font-body: "Noto Sans Tamil", "Hind Madurai", "Latha", sans-serif;
+
+	/* Spacing and layout */
+	--rn-gutter: 16px;
+	--rn-radius: 12px;
+	--rn-content-width: 720px; /* reading column */
+}
