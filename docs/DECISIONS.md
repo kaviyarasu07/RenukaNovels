@@ -20,3 +20,12 @@ Newest at the bottom. Add a line whenever you decide something, so nobody repeat
 | How to share the dummy Tamil stories between the two local sites (WP-CLI export or a migration plugin) | to try early |
 | Where the prototype is hosted for Renuga's review | to decide |
 | How push notifications will be delivered (needs early testing) | to test early |
+
+## 2026-10-31: Prototype approved by the author
+- Prototype v3 (file: docs/prototype/prototype-v3-approved.html) approved after her 9 corrections.
+- Palette: the prototype's teal palette with day/night reading mode replaces the Secret Garden board. Tokens are in assets/css/tokens.css.
+- Menu: hamburger drawer at every width. Pages: Home, Ongoing, Completed, Updates, Bookmarks, About Us, Contact Us.
+- Home shows 3 trending, 1 ongoing, 1 completed, each with a View More. "Continue Where You Left Off" lives on the Ongoing page.
+- Announcements: author posts short updates from the WordPress admin; they appear in Latest Updates. To be built in dm-core.
+- Reading controls sit at the bottom of the reading page.
+- Open: confirm with Kavi that "she ok with that" meant the teal palette as it is.

@@ -1,17 +1,52 @@
-/* Secret Garden design tokens. Light theme only. */
+/* Design tokens taken from the approved prototype (v3, 31-Oct-2026).
+   Teal palette with a day/night reading mode, approved by the author.
+   The earlier Secret Garden board (cream/sage) is NOT used. */
 :root {
-	/* Colours */
-	--rn-cream: #F8F5E9;
-	--rn-sage: #A7C1A8;
-	--rn-forest: #2F4A3A;   /* proposed, confirm against the design board */
-	--rn-rose: #B4726A;     /* about 3.5:1 on cream: large text and decoration only */
-	--rn-gold: #C9A646;     /* placeholder, small accents only, confirm against the board */
+	--rn-bg: #F0F8F7;
+	--rn-paper: #FFFFFF;
+	--rn-band: #DCEFED;
+	--rn-text: #12302F;
+	--rn-muted: #476462;
+	--rn-border: #D0E4E2;
+	--rn-btn: #AFCFCC;
+	--rn-primary: #0A6F6D;
+	--rn-on-primary: #FFFFFF;
+	--rn-rose: #A9432F;
+	--rn-on-rose: #FFFFFF;
+	--rn-rose-chip: #FCE5DF;
+	--rn-chip: #CDE9E6;
+	--rn-star: #E2A02B;
+	--rn-star-stroke: #8E5F0B;
+	--rn-hl-yellow: #FBE7A0;
+	--rn-hl-green: #CFEBD3;
+	--rn-hl-pink: #F8D2D6;
 
-	/* Typography */
-	--rn-font-body: "Noto Sans Tamil", "Hind Madurai", "Latha", sans-serif;
+	--rn-font-sans: "Noto Sans Tamil", "Hind Madurai", "Latha", system-ui, sans-serif;
+	--rn-font-serif: "Noto Serif Tamil", "Noto Sans Tamil", "Hind Madurai", "Latha", serif;
 
-	/* Spacing and layout */
 	--rn-gutter: 16px;
 	--rn-radius: 12px;
-	--rn-content-width: 720px; /* reading column */
+	--rn-reading-width: 640px;
+}
+
+/* Reading page night mode only changes the tokens. */
+:root[data-mode="night"] {
+	--rn-bg: #0E1F1F;
+	--rn-paper: #152929;
+	--rn-band: #1B3232;
+	--rn-text: #E4F3F1;
+	--rn-muted: #A8C7C4;
+	--rn-border: #2A4644;
+	--rn-btn: #3B5E5B;
+	--rn-primary: #6ED3CD;
+	--rn-on-primary: #07211F;
+	--rn-rose: #F4A593;
+	--rn-on-rose: #3A120A;
+	--rn-rose-chip: #3A2420;
+	--rn-chip: #213F3D;
+	--rn-star: #E7B35C;
+	--rn-star-stroke: #E7B35C;
+	--rn-hl-yellow: #6B5A1F;
+	--rn-hl-green: #2F5236;
+	--rn-hl-pink: #6A3840;
 }
