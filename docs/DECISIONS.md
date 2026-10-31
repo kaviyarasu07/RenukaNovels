@@ -29,3 +29,4 @@ Newest at the bottom. Add a line whenever you decide something, so nobody repeat
 - Announcements: author posts short updates from the WordPress admin; they appear in Latest Updates. To be built in dm-core.
 - Reading controls sit at the bottom of the reading page.
 - Open: confirm with Kavi that "she ok with that" meant the teal palette as it is.
+- 2026-10-31: dm-core spec drafted in docs/DM_CORE_SPEC.md (modules, build order, open questions).
