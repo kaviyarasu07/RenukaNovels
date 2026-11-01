@@ -19,6 +19,7 @@ add_action( 'admin_menu', 'dm_pages_menu' );
 
 function dm_required_pages() {
 	return array(
+		'login'          => array( 'Log in', '<p>This page is drawn by the theme. It holds the Log in and Register forms.</p>' ),
 		'my-account'     => array( 'My Account', '<p>This page is drawn by the theme. Readers see their reading, bookmarks, comments and highlights. The admin also sees the announcement form.</p>' ),
 		'updates'        => array( 'Updates', '<p>This page lists the latest chapters and announcements. It is drawn by the theme.</p>' ),
 		'trending'       => array( 'Trending', '<p>This page lists novels by number of views. It is drawn by the theme.</p>' ),
@@ -62,7 +63,7 @@ function dm_pages_screen() {
 			$id = wp_insert_post(
 				array(
 					'post_type'    => 'page',
-					'post_status'  => in_array( $slug, array( 'my-account', 'updates', 'trending', 'library', 'ongoing', 'completed' ), true ) ? 'publish' : 'draft',
+					'post_status'  => in_array( $slug, array( 'login', 'my-account', 'updates', 'trending', 'library', 'ongoing', 'completed' ), true ) ? 'publish' : 'draft',
 					'post_name'    => $slug,
 					'post_title'   => $page[0],
 					'post_content' => $page[1],
@@ -78,7 +79,7 @@ function dm_pages_screen() {
 	if ( $msg ) {
 		echo '<div class="notice notice-success"><p>' . esc_html( $msg ) . '</p></div>';
 	}
-	echo '<p>Creates My Account, Updates, Trending, Library, Ongoing, Completed (published) and About Us, Contact Us, FAQ, Privacy Policy, Terms (saved as drafts). Replace every [bracketed] text with real details, then publish. Existing pages are never changed.</p>';
+	echo '<p>Creates Log in, My Account, Updates, Trending, Library, Ongoing, Completed (published) and About Us, Contact Us, FAQ, Privacy Policy, Terms (saved as drafts). Replace every [bracketed] text with real details, then publish. Existing pages are never changed.</p>';
 	echo '<form method="post">';
 	wp_nonce_field( 'dm_pages' );
 	echo '<button class="button button-primary" name="dm_pages_create" value="1">Create required pages</button></form></div>';

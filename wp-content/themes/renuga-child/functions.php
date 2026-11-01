@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RN_CHILD_VERSION', '0.6.0' );
+define( 'RN_CHILD_VERSION', '0.7.0' );
 
 function rn_child_setup() {
 	add_theme_support( 'title-tag' );
@@ -226,4 +226,9 @@ function rn_update_row( $item ) {
 /** Account links. */
 function rn_account_url( $tab = '' ) {
 	return $tab ? add_query_arg( 'tab', $tab, home_url( '/my-account/' ) ) : home_url( '/my-account/' );
+}
+
+/** Readers waiting for approval. */
+function rn_pending_readers() {
+	return get_users( array( 'role' => 'dm_reader', 'meta_key' => 'dm_status', 'meta_value' => 'pending', 'orderby' => 'registered', 'order' => 'ASC' ) );
 }

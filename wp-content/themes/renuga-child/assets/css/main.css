@@ -214,3 +214,12 @@ body.rn{margin:0;background:var(--rn-bg);color:var(--rn-text);font-family:var(--
 .rn-check input{width:20px;height:20px}
 .rn .rn-linkbtn,.rn .rn-linkbtn:hover,.rn .rn-linkbtn:focus{background:none;border:none;box-shadow:none;color:var(--rn-rose);font-weight:600;cursor:pointer;min-height:44px;padding:0 8px;font-size:14px}
 .rn-upd-note{align-items:flex-start}
+
+/* ---- login and register (v0.7.0) ---- */
+.rn-form{display:flex;flex-direction:column;gap:14px}
+.rn-form .rn-btn{align-self:flex-start;min-width:180px}
+.rn-field input{min-height:48px;border-radius:12px;border:1px solid var(--rn-btn);background:var(--rn-bg);color:var(--rn-text);font-family:inherit;font-size:16px;padding:0 14px;width:100%}
+.rn-field input:focus{outline:3px solid var(--rn-rose);outline-offset:1px}
+.rn-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.rn-err{background:var(--rn-rose-chip);border-color:var(--rn-rose);color:var(--rn-text)}
+.rn-reader{align-items:center}

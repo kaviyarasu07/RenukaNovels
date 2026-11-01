@@ -1,15 +1,17 @@
 <?php
 /** My Account (WordPress page with slug "my-account"). Readers: reading, bookmarks, comments, highlights. Admin: also announcements. */
 if ( ! is_user_logged_in() ) {
-	wp_safe_redirect( wp_login_url( rn_account_url() ) );
+	wp_safe_redirect( dm_login_page_url() );
 	exit;
 }
 get_header();
 $user     = wp_get_current_user();
 $is_admin = current_user_can( 'manage_options' );
 $tabs     = array();
+$pending_n = $is_admin ? count( rn_pending_readers() ) : 0;
 if ( $is_admin ) {
 	$tabs['announcements'] = 'Announcements';
+	$tabs['readers']       = 'Reader approvals' . ( $pending_n ? ' (' . $pending_n . ')' : '' );
 }
 $tabs['reading']    = 'Reading';
 $tabs['bookmarks']  = 'Bookmarks';
@@ -24,7 +26,11 @@ $notes = array(
 	'posted'  => 'Announcement published. Readers can now see it in Latest Posts & Updates.',
 	'deleted' => 'Announcement removed.',
 	'empty'   => 'Write the announcement first.',
+	'approved' => 'Reader approved. They can now comment, rate and bookmark.',
+	'rejected' => 'Reader rejected. They can no longer log in.',
+	'welcome'  => 'Welcome! Your account is waiting for approval. You can read every story now. Commenting, rating and bookmarking open once the author approves you.',
 );
+$my_status = dm_user_status();
 ?>
 <div class="rn-wrap">
 	<section class="rn-sec">
@@ -40,6 +46,8 @@ $notes = array(
 				<a href="<?php echo esc_url( rn_account_url( $key ) ); ?>"<?php echo $tab === $key ? ' aria-current="true"' : ''; ?>><?php echo esc_html( $label ); ?></a>
 			<?php endforeach; ?>
 		</nav>
+		<?php if ( 'pending' === $my_status && 'welcome' !== $msg ) : ?><div class="rn-note" role="status">Your account is waiting for approval by the author. You can read every story meanwhile.</div><?php endif; ?>
+		<?php if ( 'rejected' === $my_status ) : ?><div class="rn-note" role="status">Your account was not approved.</div><?php endif; ?>
 		<?php if ( $msg && isset( $notes[ $msg ] ) ) : ?><div class="rn-note" role="status"><?php echo esc_html( $notes[ $msg ] ); ?></div><?php endif; ?>
 	</section>
 
@@ -80,6 +88,33 @@ $notes = array(
 					</div>
 				<?php endforeach; ?>
 				<?php if ( ! $anns ) : ?><p class="rn-muted" style="padding:18px;margin:0">No announcements yet.</p><?php endif; ?>
+			</div>
+		</section>
+
+	<?php elseif ( 'readers' === $tab && $is_admin ) : ?>
+		<section class="rn-sec">
+			<div><h2>Reader approvals</h2><div class="rn-muted">Approve each new reader once. After that they can comment, rate and bookmark without further approval.</div></div>
+			<?php
+			$readers = get_users( array( 'role' => 'dm_reader', 'orderby' => 'registered', 'order' => 'DESC', 'number' => 100 ) );
+			?>
+			<div class="rn-card" style="padding:0;overflow:hidden">
+				<?php foreach ( $readers as $r ) : $st = dm_user_status( $r->ID ); ?>
+					<div class="rn-upd rn-reader">
+						<span style="flex:1;min-width:200px;display:flex;flex-direction:column">
+							<strong><?php echo esc_html( $r->display_name ); ?></strong>
+							<span class="rn-muted" style="font-size:14px"><?php echo esc_html( $r->user_email ); ?> · joined <?php echo esc_html( wp_date( 'd-M-y', strtotime( $r->user_registered ) ) ); ?></span>
+						</span>
+						<span class="rn-pill <?php echo 'approved' === $st ? 'teal' : ( 'pending' === $st ? 'solid' : '' ); ?>"><?php echo esc_html( ucfirst( $st ) ); ?></span>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:6px">
+							<input type="hidden" name="action" value="dm_set_status">
+							<input type="hidden" name="dm_user" value="<?php echo (int) $r->ID; ?>">
+							<?php wp_nonce_field( 'dm_set_status_' . $r->ID ); ?>
+							<?php if ( 'approved' !== $st ) : ?><button class="rn-btn" style="min-height:44px;padding:0 18px" name="dm_set" value="approved">Approve</button><?php endif; ?>
+							<?php if ( 'rejected' !== $st ) : ?><button class="rn-btn ghost" style="min-height:44px;padding:0 18px" name="dm_set" value="rejected">Reject</button><?php endif; ?>
+						</form>
+					</div>
+				<?php endforeach; ?>
+				<?php if ( ! $readers ) : ?><p class="rn-muted" style="padding:18px;margin:0">No readers have registered yet.</p><?php endif; ?>
 			</div>
 		</section>
 

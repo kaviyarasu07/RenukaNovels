@@ -43,7 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php if ( is_user_logged_in() ) : ?>
 				<a class="rn-btn ghost" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">Log out</a>
 			<?php else : ?>
-				<a class="rn-btn" href="<?php echo esc_url( wp_login_url( rn_account_url() ) ); ?>">Log in</a>
+				<a class="rn-btn" href="<?php echo esc_url( dm_login_page_url() ); ?>">Log in</a>
 			<?php endif; ?>
 		</div>
 	</nav>
