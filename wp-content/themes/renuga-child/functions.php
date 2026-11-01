@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RN_CHILD_VERSION', '0.7.0' );
+define( 'RN_CHILD_VERSION', '0.9.0' );
 
 function rn_child_setup() {
 	add_theme_support( 'title-tag' );
@@ -152,6 +152,7 @@ function rn_library_card( $story ) {
 			<div class="rn-libmeta">
 				<?php if ( $views > 0 ) : ?><span><?php echo esc_html( number_format_i18n( $views ) ); ?> Views</span><?php endif; ?>
 				<span><?php echo (int) $episodes; ?> Episode<?php echo 1 === $episodes ? '' : 's'; ?></span>
+				<?php echo rn_rating_html( $story->ID ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 				<span class="rn-pill <?php echo 'completed' === $status ? 'teal' : 'solid'; ?>"><?php echo 'completed' === $status ? 'Completed' : 'Ongoing'; ?></span>
 			</div>
 			<a class="rn-libgo" href="<?php echo esc_url( get_permalink( $story ) ); ?>">View Episodes &rarr;</a>
@@ -171,7 +172,7 @@ function rn_trend_row( $story, $rank ) {
 	<a class="rn-trend" href="<?php echo esc_url( get_permalink( $story ) ); ?>">
 		<span class="rn-rank"><?php echo (int) $rank; ?></span>
 		<span class="rn-tcover"><?php echo rn_cover( $story ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-		<span class="rn-ttext"><strong lang="ta"><?php echo esc_html( get_the_title( $story ) ); ?></strong><span class="rn-muted" style="font-size:13px"><?php echo 'completed' === dm_story_status( $story->ID ) ? 'Completed' : 'Ongoing'; ?><?php echo $ch ? ' · Chapter ' . (int) get_post_meta( $ch->ID, 'dm_chapter_no', true ) : ''; ?><?php echo $views > 0 ? ' · ' . esc_html( number_format_i18n( $views ) ) . ' views' : ''; ?></span></span>
+		<span class="rn-ttext"><strong lang="ta"><?php echo esc_html( get_the_title( $story ) ); ?></strong><span class="rn-muted" style="font-size:13px"><?php echo 'completed' === dm_story_status( $story->ID ) ? 'Completed' : 'Ongoing'; ?><?php echo $ch ? ' · Chapter ' . (int) get_post_meta( $ch->ID, 'dm_chapter_no', true ) : ''; ?><?php echo $views > 0 ? ' · ' . esc_html( number_format_i18n( $views ) ) . ' views' : ''; ?><?php echo rn_rating_html( $story->ID ) ? ' · ' . rn_rating_html( $story->ID ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></span></span>
 		<span class="rn-rd">Read</span>
 	</a>
 	<?php
@@ -231,4 +232,14 @@ function rn_account_url( $tab = '' ) {
 /** Readers waiting for approval. */
 function rn_pending_readers() {
 	return get_users( array( 'role' => 'dm_reader', 'meta_key' => 'dm_status', 'meta_value' => 'pending', 'orderby' => 'registered', 'order' => 'ASC' ) );
+}
+
+
+/** "★ 4.8" or empty when the story has no ratings yet. */
+function rn_rating_html( $story_id ) {
+	list( $avg, $n ) = dm_rating_summary( $story_id );
+	if ( $n < 1 ) {
+		return '';
+	}
+	return '<span class="rn-rate-inline"><span class="rn-star" aria-hidden="true">&#9733;</span> ' . esc_html( number_format_i18n( $avg, 1 ) ) . '<span class="screen-reader-text"> out of 5, ' . (int) $n . ' ratings</span></span>';
 }

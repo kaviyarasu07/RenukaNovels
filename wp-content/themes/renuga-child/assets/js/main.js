@@ -21,7 +21,7 @@
 	var size = 18, out = document.getElementById('rn-size');
 	function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 	function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-	function applySize() { document.documentElement.style.setProperty('--rn-read-size', size + 'px'); out.textContent = size + 'px'; }
+	function applySize() { art.style.setProperty('--rn-read-size', size + 'px'); out.textContent = size + 'px'; }
 	var saved = parseInt(load('rn_size'), 10);
 	if (saved >= 14 && saved <= 30) { size = saved; }
 	applySize();
@@ -126,5 +126,196 @@
 	if (!ta) { return; }
 	document.querySelectorAll('[data-fill]').forEach(function (b) {
 		b.addEventListener('click', function () { ta.value = b.getAttribute('data-fill'); ta.focus(); });
+	});
+})();
+
+
+/* Comment box: grows while typing, counts characters. */
+(function () {
+	document.querySelectorAll('textarea[data-grow]').forEach(function (ta) {
+		var box = ta.closest('.rn-compbox');
+		var counter = box ? box.querySelector('[data-count]') : null;
+		function fit() { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 260) + 'px'; if (counter) { counter.textContent = ta.value.length; } }
+		ta.addEventListener('input', fit);
+		fit();
+	});
+})();
+
+
+/* ---------- Comments: 5 newest, "show more" adds 10; only the newest reply, "show all replies" ---------- */
+(function () {
+	var list = document.getElementById('rn-cmtlist');
+	if (!list) { return; }
+	var groups = [].slice.call(list.querySelectorAll('[data-group]'));
+	var more = document.getElementById('rn-cmt-more');
+	var shown = 5;
+	function paint() {
+		groups.forEach(function (g, i) { g.hidden = i >= shown; });
+		var left = groups.length - shown;
+		if (more) {
+			more.hidden = left <= 0;
+			if (left > 0) { more.textContent = 'Show ' + Math.min(10, left) + ' more comment' + (Math.min(10, left) === 1 ? '' : 's') + ' (' + left + ' left)'; }
+		}
+	}
+	if (more) { more.addEventListener('click', function () { shown += 10; paint(); }); }
+	paint();
+
+	groups.forEach(function (g) {
+		var ul = g.querySelector('[data-replies]');
+		if (!ul) { return; }
+		var reps = [].slice.call(ul.children);
+		if (reps.length < 2) { return; }
+		var open = false;
+		var btn = document.createElement('button');
+		btn.type = 'button'; btn.className = 'rn-more-btn rn-allrep';
+		function sync() {
+			reps.forEach(function (r, i) { r.hidden = !open && i < reps.length - 1; });
+			btn.textContent = open ? 'Hide replies' : 'Show all replies (' + reps.length + ')';
+			btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+		}
+		btn.addEventListener('click', function () { open = !open; sync(); });
+		ul.parentNode.insertBefore(btn, ul);
+		sync();
+	});
+
+	/* A link to one comment (after posting) must open its comment, even if it is further down. */
+	var m = /^#comment-(\d+)$/.exec(location.hash || '');
+	if (m) {
+		var el = document.getElementById('comment-' + m[1]);
+		if (el) {
+			var g = el.closest('[data-group]');
+			if (g) { shown = Math.max(shown, groups.indexOf(g) + 1); paint(); }
+			var rep = el.closest('.rn-rep');
+			if (rep) { rep.hidden = false; }
+			el.scrollIntoView({ block: 'center' });
+		}
+	}
+})();
+
+/* ---------- Reading page: no copying, sentence highlighter, bookmark ---------- */
+(function () {
+	var art = document.getElementById('rn-article');
+	if (!art) { return; }
+	var d = art.dataset;
+	var status = d.status || 'guest';
+	var canMark = status === 'approved';
+	var marks = { bm: null, hl: [] };
+	try { marks = JSON.parse(d.marks || '{}') || marks; } catch (e) {}
+	marks.hl = marks.hl || [];
+
+	/* Stop copying: no selection, copy, cut, right-click menu or dragging inside the story text. */
+	['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(function (ev) {
+		art.addEventListener(ev, function (e) { e.preventDefault(); });
+	});
+
+	/* Wrap each sentence so it can be tapped. */
+	var paras = [].slice.call(art.querySelectorAll('p'));
+	paras.forEach(function (p, pi) {
+		var si = 0;
+		var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null);
+		var nodes = [];
+		while (walker.nextNode()) { nodes.push(walker.currentNode); }
+		nodes.forEach(function (node) {
+			if (!node.nodeValue.trim()) { return; }
+			var parts = node.nodeValue.match(/[^.!?]+[.!?]*["”’)”’]*\s*/g) || [node.nodeValue];
+			var frag = document.createDocumentFragment();
+			parts.forEach(function (txt) {
+				var s = document.createElement('span');
+				s.className = 'rn-s'; s.setAttribute('data-p', pi); s.setAttribute('data-s', si++);
+				s.textContent = txt;
+				frag.appendChild(s);
+			});
+			node.parentNode.replaceChild(frag, node);
+		});
+	});
+	function sentEl(p, s) { return art.querySelector('.rn-s[data-p="' + p + '"][data-s="' + s + '"]'); }
+	function setColor(el, color) {
+		['yellow', 'green', 'pink'].forEach(function (c) { el.classList.remove('hl-' + c); });
+		if (color) { el.classList.add('hl-' + color); }
+	}
+	marks.hl.forEach(function (h) { var el = sentEl(h.p, h.s); if (el) { setColor(el, h.c); } });
+
+	/* Small message above the toolbar. */
+	var toastEl = null, toastTimer = null;
+	function toast(msg, linkText, linkUrl) {
+		if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'rn-toast'; toastEl.setAttribute('role', 'status'); document.body.appendChild(toastEl); }
+		toastEl.textContent = msg + ' ';
+		if (linkText) { var a = document.createElement('a'); a.href = linkUrl; a.textContent = linkText; toastEl.appendChild(a); }
+		toastEl.hidden = false;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(function () { toastEl.hidden = true; }, 4000);
+	}
+	function needAccount() {
+		if (status === 'guest') { toast('Log in to save bookmarks and highlights.', 'Log in', d.login); }
+		else if (status === 'pending') { toast('Your account is waiting for approval. You can save bookmarks and highlights once it is approved.'); }
+		else { toast('Bookmarks and highlights are not available for this account.'); }
+	}
+	function send(data) {
+		var fd = new FormData();
+		fd.append('action', 'dm_mark'); fd.append('nonce', d.nonce); fd.append('chapter', d.chapterId);
+		Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+		return fetch(d.ajax, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+			if (!j || !j.success) { throw new Error('failed'); }
+		}).catch(function () { toast('Could not save. Please check your connection and try again.'); throw new Error('failed'); });
+	}
+
+	/* Bookmark: saves this chapter and the paragraph at the top of the screen. */
+	var bmBtn = document.getElementById('rn-bm');
+	function currentPara() {
+		var idx = 0;
+		for (var i = 0; i < paras.length; i++) { if (paras[i].getBoundingClientRect().bottom > 110) { idx = i; break; } idx = i; }
+		return idx;
+	}
+	function paintBm() {
+		var on = marks.bm !== null && marks.bm !== undefined;
+		bmBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+		bmBtn.classList.toggle('on', on);
+		paras.forEach(function (p, i) { p.classList.toggle('rn-bm', on && i === marks.bm); });
+	}
+	paintBm();
+	bmBtn.addEventListener('click', function () {
+		if (!canMark) { needAccount(); return; }
+		if (marks.bm !== null && marks.bm !== undefined) {
+			send({ op: 'bm_clear' }).then(function () { marks.bm = null; paintBm(); toast('Bookmark removed.'); }).catch(function () {});
+		} else {
+			var p = currentPara();
+			send({ op: 'bm_set', para: p }).then(function () { marks.bm = p; paintBm(); toast('Bookmarked at paragraph ' + (p + 1) + '.', 'See bookmarks', d.url.replace(/chapter\/.*$/, 'my-account/?tab=bookmarks')); }).catch(function () {});
+		}
+	});
+
+	/* Highlighter: tap a sentence to colour it, tap again to clear. */
+	var hlBtn = document.getElementById('rn-hl');
+	var bar = document.getElementById('rn-hlbar');
+	var mode = false, color = 'yellow';
+	function paintMode() {
+		hlBtn.setAttribute('aria-pressed', mode ? 'true' : 'false');
+		hlBtn.classList.toggle('on', mode);
+		bar.hidden = !mode;
+		art.classList.toggle('rn-hlmode', mode);
+		[].forEach.call(bar.querySelectorAll('.rn-sw[data-color]'), function (b) { b.classList.toggle('sel', b.getAttribute('data-color') === color); });
+	}
+	hlBtn.addEventListener('click', function () {
+		if (!canMark) { needAccount(); return; }
+		mode = !mode; paintMode();
+		if (mode) { toast('Tap a sentence to highlight it.'); }
+	});
+	document.getElementById('rn-hl-done').addEventListener('click', function () { mode = false; paintMode(); });
+	[].forEach.call(bar.querySelectorAll('.rn-sw[data-color]'), function (b) {
+		b.addEventListener('click', function () { color = b.getAttribute('data-color'); paintMode(); });
+	});
+	art.addEventListener('click', function (e) {
+		if (!mode) { return; }
+		var el = e.target.closest ? e.target.closest('.rn-s') : null;
+		if (!el) { return; }
+		var p = +el.getAttribute('data-p'), s = +el.getAttribute('data-s');
+		var cur = ['yellow', 'green', 'pink'].filter(function (c) { return el.classList.contains('hl-' + c); })[0] || '';
+		if (color === 'erase' || cur === color) {
+			if (!cur) { return; }
+			setColor(el, '');
+			send({ op: 'hl_clear', para: p, sent: s }).catch(function () { setColor(el, cur); });
+		} else {
+			setColor(el, color);
+			send({ op: 'hl_set', para: p, sent: s, color: color, snippet: el.textContent.trim().slice(0, 100) }).catch(function () { setColor(el, cur); });
+		}
 	});
 })();

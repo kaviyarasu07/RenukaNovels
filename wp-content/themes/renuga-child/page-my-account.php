@@ -125,6 +125,104 @@ $my_status = dm_user_status();
 		</section>
 		<p class="rn-muted" id="rn-cont-empty" hidden>You have not started a story on this device yet. Open any chapter and it will appear here.</p>
 
+	<?php elseif ( 'comments' === $tab ) : ?>
+		<section class="rn-sec">
+			<div><h2>My comments</h2><div class="rn-muted">Everything you have written on chapters</div></div>
+			<div class="rn-card" style="padding:0;overflow:hidden">
+				<?php
+				$mine = get_comments( array( 'user_id' => get_current_user_id(), 'status' => 'approve', 'orderby' => 'comment_date_gmt', 'order' => 'DESC', 'number' => 50 ) );
+				foreach ( $mine as $c ) :
+					$ch = get_post( $c->comment_post_ID );
+					if ( ! $ch ) {
+						continue;
+					}
+					$st_ = get_post( $ch->post_parent );
+					?>
+					<div class="rn-upd rn-mycmt">
+						<span class="rn-muted" style="font-size:13px"><?php echo esc_html( get_comment_date( 'd-M-y H:i', $c ) ); ?></span>
+						<span style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px">
+							<a lang="ta" href="<?php echo esc_url( get_permalink( $ch ) . '#comment-' . (int) $c->comment_ID ); ?>" style="font-weight:600"><?php echo esc_html( ( $st_ ? get_the_title( $st_ ) . ': ' : '' ) . get_the_title( $ch ) ); ?></a>
+							<span lang="ta"><?php echo nl2br( esc_html( wp_trim_words( $c->comment_content, 40 ) ) ); ?></span>
+						</span>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="dm_delete_comment">
+							<input type="hidden" name="dm_cid" value="<?php echo (int) $c->comment_ID; ?>">
+							<input type="hidden" name="dm_back" value="<?php echo esc_url( rn_account_url( 'comments' ) ); ?>">
+							<?php wp_nonce_field( 'dm_delcomment_' . $c->comment_ID ); ?>
+							<button class="rn-linkbtn" type="submit">Delete</button>
+						</form>
+					</div>
+				<?php endforeach; ?>
+				<?php if ( ! $mine ) : ?><p class="rn-muted" style="padding:18px;margin:0">You have not commented yet. Open a chapter and share what you felt.</p><?php endif; ?>
+			</div>
+		</section>
+
+	<?php elseif ( 'bookmarks' === $tab ) : ?>
+		<section class="rn-sec">
+			<div><h2>My bookmarks</h2><div class="rn-muted">Places you saved while reading</div></div>
+			<div class="rn-card" style="padding:0;overflow:hidden">
+				<?php
+				$bms = dm_user_bookmarks( get_current_user_id() );
+				foreach ( $bms as $b ) :
+					$chp = get_post( (int) $b->chapter_id );
+					if ( ! $chp || 'publish' !== $chp->post_status ) {
+						continue;
+					}
+					$sty = get_post( $chp->post_parent );
+					?>
+					<div class="rn-upd rn-mycmt">
+						<span class="rn-muted" style="font-size:13px"><?php echo esc_html( wp_date( 'd-M-y H:i', strtotime( $b->created_at . ' UTC' ) ) ); ?></span>
+						<span style="flex:1;min-width:200px;display:flex;flex-direction:column">
+							<a lang="ta" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $b->para ); ?>" style="font-weight:600"><?php echo esc_html( ( $sty ? get_the_title( $sty ) . ': ' : '' ) . get_the_title( $chp ) ); ?></a>
+							<span class="rn-muted" style="font-size:14px">Paragraph <?php echo (int) $b->para + 1; ?></span>
+						</span>
+						<a class="rn-btn ghost" style="min-height:44px;padding:0 18px" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $b->para ); ?>">Open</a>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="dm_remove_mark">
+							<input type="hidden" name="dm_type" value="bookmark">
+							<input type="hidden" name="dm_chapter" value="<?php echo (int) $b->chapter_id; ?>">
+							<?php wp_nonce_field( 'dm_rmmark' ); ?>
+							<button class="rn-linkbtn" type="submit">Remove</button>
+						</form>
+					</div>
+				<?php endforeach; ?>
+				<?php if ( ! $bms ) : ?><p class="rn-muted" style="padding:18px;margin:0">No bookmarks yet. While reading, tap the bookmark button in the toolbar at the bottom.</p><?php endif; ?>
+			</div>
+		</section>
+
+	<?php elseif ( 'highlights' === $tab ) : ?>
+		<section class="rn-sec">
+			<div><h2>My highlights</h2><div class="rn-muted">Sentences you highlighted while reading</div></div>
+			<div class="rn-card" style="padding:0;overflow:hidden">
+				<?php
+				$hls = dm_user_highlights( get_current_user_id() );
+				foreach ( $hls as $h ) :
+					$chp = get_post( (int) $h->chapter_id );
+					if ( ! $chp || 'publish' !== $chp->post_status ) {
+						continue;
+					}
+					$sty = get_post( $chp->post_parent );
+					?>
+					<div class="rn-upd rn-mycmt">
+						<span style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px">
+							<a lang="ta" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $h->para ); ?>" style="font-weight:600"><?php echo esc_html( ( $sty ? get_the_title( $sty ) . ': ' : '' ) . get_the_title( $chp ) ); ?></a>
+							<span lang="ta" class="rn-hlquote hl-<?php echo esc_attr( $h->color ); ?>"><?php echo esc_html( $h->snippet ); ?></span>
+						</span>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="dm_remove_mark">
+							<input type="hidden" name="dm_type" value="highlight">
+							<input type="hidden" name="dm_chapter" value="<?php echo (int) $h->chapter_id; ?>">
+							<input type="hidden" name="dm_para" value="<?php echo (int) $h->para; ?>">
+							<input type="hidden" name="dm_sent" value="<?php echo (int) $h->sent; ?>">
+							<?php wp_nonce_field( 'dm_rmmark' ); ?>
+							<button class="rn-linkbtn" type="submit">Remove</button>
+						</form>
+					</div>
+				<?php endforeach; ?>
+				<?php if ( ! $hls ) : ?><p class="rn-muted" style="padding:18px;margin:0">No highlights yet. While reading, tap the highlighter in the toolbar, then tap a sentence.</p><?php endif; ?>
+			</div>
+		</section>
+
 	<?php else : ?>
 		<section class="rn-sec">
 			<div class="rn-card"><p class="rn-muted" style="margin:0">Your <?php echo esc_html( strtolower( $tabs[ $tab ] ) ); ?> will be listed here. This part is being built next.</p></div>

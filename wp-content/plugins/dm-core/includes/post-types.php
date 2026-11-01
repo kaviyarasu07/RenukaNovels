@@ -48,7 +48,7 @@ function dm_register_post_types() {
 			'menu_icon'    => 'dashicons-media-text',
 			'menu_position'=> 6,
 			'rewrite'      => array( 'slug' => 'chapter' ),
-			'supports'     => array( 'title', 'editor', 'page-attributes' ),
+			'supports'     => array( 'title', 'editor', 'page-attributes', 'comments' ),
 		)
 	);
 }

@@ -19,6 +19,7 @@ $latest    = rn_updates( 6 );
 			<div class="rn-stats">
 				<div><b><?php echo (int) rn_count( 'dm_story' ); ?></b>Stories</div>
 				<div><b><?php echo (int) rn_count( 'dm_chapter' ); ?></b>Chapters</div>
+				<?php list( $ov_avg, $ov_n ) = dm_overall_rating(); if ( $ov_n ) : ?><div><b><?php echo esc_html( number_format_i18n( $ov_avg, 1 ) ); ?></b>Reader rating</div><?php endif; ?>
 			</div>
 		</div>
 		<div class="rn-logohero"><img src="<?php echo esc_url( get_stylesheet_directory_uri() . '/assets/img/logo.webp' ); ?>" width="300" height="300" alt="Renuga Muthukumar Novels logo: a green parrot writing with a quill on an open book"></div>

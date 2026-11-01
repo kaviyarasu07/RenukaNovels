@@ -27,18 +27,33 @@ $next     = ( false !== $pos && $pos < count( $chapters ) - 1 ) ? $chapters[ $po
 			data-chapter-title="<?php echo esc_attr( get_the_title() ); ?>"
 			data-url="<?php echo esc_url( get_permalink() ); ?>"
 			data-cover="<?php echo esc_url( $rn_cover ); ?>"
-			data-pal="<?php echo (int) ( $story ? $story->ID % 4 : 0 ); ?>"><?php the_content(); ?></div>
+			data-pal="<?php echo (int) ( $story ? $story->ID % 4 : 0 ); ?>"
+			data-status="<?php echo esc_attr( is_user_logged_in() ? dm_user_status() : 'guest' ); ?>"
+			data-login="<?php echo esc_url( dm_login_page_url( array( 'redirect_to' => get_permalink() ) ) ); ?>"
+			data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+			data-nonce="<?php echo esc_attr( dm_can_engage() ? wp_create_nonce( 'dm_mark' ) : '' ); ?>"
+			data-marks="<?php echo esc_attr( wp_json_encode( dm_can_engage() ? dm_marks_for( get_the_ID(), get_current_user_id() ) : array( 'bm' => null, 'hl' => array() ) ) ); ?>"><?php the_content(); ?></div>
 		<nav class="rn-chnav" aria-label="Chapters">
 			<?php if ( $prev ) : ?><a class="rn-btn ghost" href="<?php echo esc_url( get_permalink( $prev ) ); ?>">&larr; Previous</a><?php else : ?><span></span><?php endif; ?>
 			<?php if ( $next ) : ?><a class="rn-btn" href="<?php echo esc_url( get_permalink( $next ) ); ?>">Next chapter &rarr;</a><?php endif; ?>
 		</nav>
+		<?php get_template_part( 'template-parts/comments' ); ?>
 	</div>
 </div>
 <div class="rn-tools" role="toolbar" aria-label="Reading controls">
+	<div class="rn-hlbar" id="rn-hlbar" hidden role="group" aria-label="Highlighter">
+		<button type="button" class="rn-sw" data-color="yellow" aria-label="Yellow" style="--sw:var(--rn-hl-yellow)"></button>
+		<button type="button" class="rn-sw" data-color="green" aria-label="Green" style="--sw:var(--rn-hl-green)"></button>
+		<button type="button" class="rn-sw" data-color="pink" aria-label="Pink" style="--sw:var(--rn-hl-pink)"></button>
+		<button type="button" class="rn-sw rn-erase" data-color="erase" aria-label="Eraser">Erase</button>
+		<button type="button" class="rn-sw rn-done" id="rn-hl-done" aria-label="Finish highlighting">Done</button>
+	</div>
 	<button type="button" id="rn-smaller" aria-label="Smaller text">A&minus;</button>
 	<output id="rn-size">18px</output>
 	<button type="button" id="rn-larger" aria-label="Larger text">A+</button>
-	<button type="button" id="rn-mode" aria-label="Day or night mode">Day/Night</button>
+	<button type="button" id="rn-mode" aria-label="Day or night mode"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+	<button type="button" id="rn-bm" aria-label="Bookmark this place" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+	<button type="button" id="rn-hl" aria-label="Highlighter" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
 </div>
 <?php
 get_footer();
