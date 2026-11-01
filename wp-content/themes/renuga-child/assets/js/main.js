@@ -46,3 +46,85 @@
 		b.textContent = open ? 'Show fewer' : 'See more trending novels';
 	});
 })();
+
+
+/* Continue reading: remember the last paragraph of each story in this browser.
+   Chapter page saves it; the Ongoing page lists it. (Logged-in sync arrives with the login module.) */
+(function () {
+	var KEY = 'rn_last', MAX = 10;
+	function load() { try { var v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+	function save(list) { try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX))); } catch (e) {} }
+	var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+	function p2(n) { return (n < 10 ? '0' : '') + n; }
+	function stamp(ts) { var d = new Date(ts); return p2(d.getDate()) + '-' + MON[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+
+	/* ---- chapter page: track the paragraph the reader is on ---- */
+	var art = document.getElementById('rn-article');
+	if (art && art.getAttribute('data-story-id') !== '0') {
+		var paras = art.querySelectorAll('p');
+		var d = art.dataset, timer = null;
+		var m = /^#p(\d+)$/.exec(location.hash || '');
+		if (m && paras[+m[1]]) { setTimeout(function () { paras[+m[1]].scrollIntoView({ block: 'start' }); }, 150); }
+		var currentPara = function () {
+			var idx = 0;
+			for (var i = 0; i < paras.length; i++) { if (paras[i].getBoundingClientRect().bottom > 110) { idx = i; break; } idx = i; }
+			return idx;
+		};
+		var record = function () {
+			if (!paras.length) { return; }
+			var idx = currentPara();
+			var rec = { s: d.storyId, st: d.storyTitle, su: d.storyUrl, c: d.chapterId, cn: +d.chapterNo, ct: d.chapterTitle, u: d.url, img: d.cover, pal: +d.pal, p: idx, n: paras.length, pct: Math.round(((idx + 1) / paras.length) * 100), ts: Date.now() };
+			var list = load().filter(function (x) { return x.s !== rec.s; });
+			list.unshift(rec);
+			save(list);
+		};
+		record();
+		window.addEventListener('scroll', function () { clearTimeout(timer); timer = setTimeout(record, 400); }, { passive: true });
+		window.addEventListener('pagehide', record);
+	}
+
+	/* ---- Ongoing page: list the saved stories ---- */
+	var box = document.getElementById('rn-continue');
+	var listEl = document.getElementById('rn-contlist');
+	if (box && listEl) {
+		var items = load();
+		var emptyMsg = document.getElementById('rn-cont-empty');
+		if (!items.length) { if (emptyMsg) { emptyMsg.hidden = false; } return; }
+		var PAL = [['#BFE6E2','#FFF8E6','#6FBDB6','#0A6F6D'],['#D6EEF5','#FFF8E6','#8AC4DA','#3A89A8'],['#FADBD3','#FFF3E0','#F0A898','#C9604C'],['#FFF0C9','#FFFFFF','#F3CC6B','#D9A23B']];
+		var NS = 'http://www.w3.org/2000/svg';
+		var cover = function (it) {
+			if (it.img) { var im = document.createElement('img'); im.className = 'rn-cover'; im.alt = ''; im.src = it.img; return im; }
+			var c = PAL[(it.pal || 0) % 4];
+			var svg = document.createElementNS(NS, 'svg');
+			svg.setAttribute('viewBox', '0 0 120 170'); svg.setAttribute('class', 'rn-cover'); svg.setAttribute('aria-hidden', 'true');
+			svg.innerHTML = '<rect width="120" height="170" fill="' + c[0] + '"/><circle cx="60" cy="56" r="24" fill="' + c[1] + '"/><path d="M0 104Q30 88 60 104T120 100V170H0Z" fill="' + c[2] + '" opacity=".75"/><path d="M0 126Q30 110 60 126T120 122V170H0Z" fill="' + c[2] + '"/><path d="M0 148Q30 134 60 148T120 144V170H0Z" fill="' + c[3] + '"/>';
+			return svg;
+		};
+		var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text) { e.textContent = text; } return e; };
+		items.slice(0, 6).forEach(function (it) {
+			var card = el('div', 'rn-cont');
+			card.appendChild(cover(it));
+			var body = el('div', 'rn-contbody');
+			var t = el('strong', '', it.st); t.lang = 'ta';
+			body.appendChild(t);
+			body.appendChild(el('span', '', 'Chapter ' + it.cn + ' · Paragraph ' + (it.p + 1) + ' of ' + it.n + ' · ' + it.pct + '% read'));
+			body.appendChild(el('span', '', 'Last read ' + stamp(it.ts)));
+			var bar = el('div', 'rn-prog'); var fill = document.createElement('i'); fill.style.width = it.pct + '%'; bar.appendChild(fill);
+			body.appendChild(bar);
+			card.appendChild(body);
+			var a = el('a', 'rn-btn', 'Continue reading'); a.href = it.u + '#p' + it.p;
+			card.appendChild(a);
+			listEl.appendChild(card);
+		});
+		box.hidden = false;
+	}
+})();
+
+/* My Account: quick-fill buttons for announcements. */
+(function () {
+	var ta = document.getElementById('dm_text');
+	if (!ta) { return; }
+	document.querySelectorAll('[data-fill]').forEach(function (b) {
+		b.addEventListener('click', function () { ta.value = b.getAttribute('data-fill'); ta.focus(); });
+	});
+})();

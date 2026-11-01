@@ -30,13 +30,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div style="display:flex;justify-content:flex-end">
 			<button class="rn-iconbtn" type="button" id="rn-menu-close" aria-label="Close menu">&times;</button>
 		</div>
+		<?php if ( is_user_logged_in() ) : ?>
+			<a class="rn-acct" href="<?php echo esc_url( rn_account_url() ); ?>">My Account</a>
+		<?php endif; ?>
 		<?php
-		$rn_current = trailingslashit( home_url( add_query_arg( array() ) ) );
 		foreach ( rn_menu_items() as $item ) :
-			$is_current = ( is_front_page() && 'home' === $item[2] ) || ( $item[2] && is_page( $item[2] ) );
+			$is_current = ( is_front_page() && 'home' === $item[2] ) || ( $item[2] && is_page( $item[2] ) ) || ( is_page( 'my-account' ) && 'account' === $item[2] );
 			?>
 			<a href="<?php echo esc_url( $item[1] ); ?>"<?php echo $is_current ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $item[0] ); ?></a>
 		<?php endforeach; ?>
+		<div class="rn-auth">
+			<?php if ( is_user_logged_in() ) : ?>
+				<a class="rn-btn ghost" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">Log out</a>
+			<?php else : ?>
+				<a class="rn-btn" href="<?php echo esc_url( wp_login_url( rn_account_url() ) ); ?>">Log in</a>
+			<?php endif; ?>
+		</div>
 	</nav>
 </div>
 <main id="main">

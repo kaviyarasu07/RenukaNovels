@@ -15,7 +15,19 @@ $next     = ( false !== $pos && $pos < count( $chapters ) - 1 ) ? $chapters[ $po
 			<?php if ( $story ) : ?><a href="<?php echo esc_url( get_permalink( $story ) ); ?>" lang="ta">&larr; <?php echo esc_html( get_the_title( $story ) ); ?></a><?php endif; ?>
 			<h1 lang="ta" style="font-size:28px;margin-top:8px"><?php the_title(); ?></h1>
 		</div>
-		<div class="rn-article" id="rn-article" lang="ta"><?php the_content(); ?></div>
+		<?php
+		$rn_cover = $story ? get_the_post_thumbnail_url( $story, 'medium' ) : '';
+		?>
+		<div class="rn-article" id="rn-article" lang="ta"
+			data-story-id="<?php echo (int) ( $story ? $story->ID : 0 ); ?>"
+			data-story-title="<?php echo esc_attr( $story ? get_the_title( $story ) : '' ); ?>"
+			data-story-url="<?php echo esc_url( $story ? get_permalink( $story ) : '' ); ?>"
+			data-chapter-id="<?php echo (int) get_the_ID(); ?>"
+			data-chapter-no="<?php echo (int) get_post_meta( get_the_ID(), 'dm_chapter_no', true ); ?>"
+			data-chapter-title="<?php echo esc_attr( get_the_title() ); ?>"
+			data-url="<?php echo esc_url( get_permalink() ); ?>"
+			data-cover="<?php echo esc_url( $rn_cover ); ?>"
+			data-pal="<?php echo (int) ( $story ? $story->ID % 4 : 0 ); ?>"><?php the_content(); ?></div>
 		<nav class="rn-chnav" aria-label="Chapters">
 			<?php if ( $prev ) : ?><a class="rn-btn ghost" href="<?php echo esc_url( get_permalink( $prev ) ); ?>">&larr; Previous</a><?php else : ?><span></span><?php endif; ?>
 			<?php if ( $next ) : ?><a class="rn-btn" href="<?php echo esc_url( get_permalink( $next ) ); ?>">Next chapter &rarr;</a><?php endif; ?>
