@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RN_CHILD_VERSION', '0.9.0' );
+define( 'RN_CHILD_VERSION', '0.9.2' );
 
 function rn_child_setup() {
 	add_theme_support( 'title-tag' );
@@ -242,4 +242,26 @@ function rn_rating_html( $story_id ) {
 		return '';
 	}
 	return '<span class="rn-rate-inline"><span class="rn-star" aria-hidden="true">&#9733;</span> ' . esc_html( number_format_i18n( $avg, 1 ) ) . '<span class="screen-reader-text"> out of 5, ' . (int) $n . ' ratings</span></span>';
+}
+
+
+/** Page numbers for My Account lists (20 per page, query arg "pg"). */
+function rn_account_pager( $total, $page, $tab, $scope = 'all', $per = 20 ) {
+	$pages = (int) ceil( $total / $per );
+	if ( $pages < 2 ) {
+		return '';
+	}
+	$base  = home_url( '/my-account/' ) . '?tab=' . rawurlencode( $tab ) . ( 'mine' === $scope ? '&scope=mine' : '' ) . '&pg=%#%';
+	$links = paginate_links(
+		array(
+			'base'      => $base,
+			'format'    => '',
+			'current'   => $page,
+			'total'     => $pages,
+			'mid_size'  => 1,
+			'prev_text' => '&larr; Previous',
+			'next_text' => 'Next &rarr;',
+		)
+	);
+	return $links ? '<nav class="rn-pager" aria-label="Pages">' . $links . '</nav>' : '';
 }

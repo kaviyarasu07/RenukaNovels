@@ -31,6 +31,15 @@ $notes = array(
 	'welcome'  => 'Welcome! Your account is waiting for approval. You can read every story now. Commenting, rating and bookmarking open once the author approves you.',
 );
 $my_status = dm_user_status();
+$pg        = max( 1, isset( $_GET['pg'] ) ? (int) $_GET['pg'] : 1 ); // phpcs:ignore WordPress.Security.NonceVerification
+$per       = 20;
+$off       = ( $pg - 1 ) * $per;
+$scope     = ( $is_admin && ! ( isset( $_GET['scope'] ) && 'mine' === $_GET['scope'] ) ) ? 'all' : 'mine'; // phpcs:ignore WordPress.Security.NonceVerification
+$scope_tab = $is_admin && in_array( $tab, array( 'comments', 'bookmarks', 'highlights' ), true );
+$who       = function ( $uid ) {
+	$u = get_userdata( (int) $uid );
+	return $u ? $u->display_name : 'Deleted user';
+};
 ?>
 <div class="rn-wrap">
 	<section class="rn-sec">
@@ -46,6 +55,12 @@ $my_status = dm_user_status();
 				<a href="<?php echo esc_url( rn_account_url( $key ) ); ?>"<?php echo $tab === $key ? ' aria-current="true"' : ''; ?>><?php echo esc_html( $label ); ?></a>
 			<?php endforeach; ?>
 		</nav>
+		<?php if ( $scope_tab ) : ?>
+			<nav class="rn-filters" aria-label="Whose items">
+				<a href="<?php echo esc_url( rn_account_url( $tab ) ); ?>"<?php echo 'all' === $scope ? ' aria-current="true"' : ''; ?>>All readers</a>
+				<a href="<?php echo esc_url( add_query_arg( 'scope', 'mine', rn_account_url( $tab ) ) ); ?>"<?php echo 'mine' === $scope ? ' aria-current="true"' : ''; ?>>Only mine</a>
+			</nav>
+		<?php endif; ?>
 		<?php if ( 'pending' === $my_status && 'welcome' !== $msg ) : ?><div class="rn-note" role="status">Your account is waiting for approval by the author. You can read every story meanwhile.</div><?php endif; ?>
 		<?php if ( 'rejected' === $my_status ) : ?><div class="rn-note" role="status">Your account was not approved.</div><?php endif; ?>
 		<?php if ( $msg && isset( $notes[ $msg ] ) ) : ?><div class="rn-note" role="status"><?php echo esc_html( $notes[ $msg ] ); ?></div><?php endif; ?>
@@ -73,7 +88,8 @@ $my_status = dm_user_status();
 			<h2>Published announcements</h2>
 			<div class="rn-card" style="padding:0;overflow:hidden">
 				<?php
-				$anns = get_posts( array( 'post_type' => 'dm_announcement', 'post_status' => 'publish', 'posts_per_page' => 20, 'orderby' => 'date', 'order' => 'DESC' ) );
+				$anns = get_posts( array( 'post_type' => 'dm_announcement', 'post_status' => 'publish', 'posts_per_page' => $per, 'offset' => $off, 'orderby' => 'date', 'order' => 'DESC' ) );
+				$anns_total = (int) wp_count_posts( 'dm_announcement' )->publish;
 				foreach ( $anns as $a ) :
 					?>
 					<div class="rn-upd rn-upd-note">
@@ -89,13 +105,15 @@ $my_status = dm_user_status();
 				<?php endforeach; ?>
 				<?php if ( ! $anns ) : ?><p class="rn-muted" style="padding:18px;margin:0">No announcements yet.</p><?php endif; ?>
 			</div>
+			<?php echo rn_account_pager( $anns_total, $pg, 'announcements' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 		</section>
 
 	<?php elseif ( 'readers' === $tab && $is_admin ) : ?>
 		<section class="rn-sec">
 			<div><h2>Reader approvals</h2><div class="rn-muted">Approve each new reader once. After that they can comment, rate and bookmark without further approval.</div></div>
 			<?php
-			$readers = get_users( array( 'role' => 'dm_reader', 'orderby' => 'registered', 'order' => 'DESC', 'number' => 100 ) );
+			$rq      = new WP_User_Query( array( 'role' => 'dm_reader', 'orderby' => 'registered', 'order' => 'DESC', 'number' => $per, 'paged' => $pg, 'count_total' => true ) );
+			$readers = $rq->get_results();
 			?>
 			<div class="rn-card" style="padding:0;overflow:hidden">
 				<?php foreach ( $readers as $r ) : $st = dm_user_status( $r->ID ); ?>
@@ -116,6 +134,7 @@ $my_status = dm_user_status();
 				<?php endforeach; ?>
 				<?php if ( ! $readers ) : ?><p class="rn-muted" style="padding:18px;margin:0">No readers have registered yet.</p><?php endif; ?>
 			</div>
+			<?php echo rn_account_pager( $rq->get_total(), $pg, 'readers' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 		</section>
 
 	<?php elseif ( 'reading' === $tab ) : ?>
@@ -127,10 +146,15 @@ $my_status = dm_user_status();
 
 	<?php elseif ( 'comments' === $tab ) : ?>
 		<section class="rn-sec">
-			<div><h2>My comments</h2><div class="rn-muted">Everything you have written on chapters</div></div>
+			<div><h2><?php echo 'all' === $scope ? 'All comments' : 'My comments'; ?></h2><div class="rn-muted"><?php echo 'all' === $scope ? 'Every comment readers have written, newest first' : 'Everything you have written on chapters'; ?></div></div>
 			<div class="rn-card" style="padding:0;overflow:hidden">
 				<?php
-				$mine = get_comments( array( 'user_id' => get_current_user_id(), 'status' => 'approve', 'orderby' => 'comment_date_gmt', 'order' => 'DESC', 'number' => 50 ) );
+				$cargs = array( 'status' => 'approve', 'orderby' => 'comment_date_gmt', 'order' => 'DESC' );
+				if ( 'mine' === $scope ) {
+					$cargs['user_id'] = get_current_user_id();
+				}
+				$c_total = (int) get_comments( array_merge( $cargs, array( 'count' => true ) ) );
+				$mine    = get_comments( array_merge( $cargs, array( 'number' => $per, 'offset' => $off ) ) );
 				foreach ( $mine as $c ) :
 					$ch = get_post( $c->comment_post_ID );
 					if ( ! $ch ) {
@@ -141,6 +165,7 @@ $my_status = dm_user_status();
 					<div class="rn-upd rn-mycmt">
 						<span class="rn-muted" style="font-size:13px"><?php echo esc_html( get_comment_date( 'd-M-y H:i', $c ) ); ?></span>
 						<span style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px">
+							<?php if ( 'all' === $scope ) : ?><span class="rn-muted" style="font-size:14px"><strong style="color:var(--rn-text)"><?php echo esc_html( $c->comment_author ); ?></strong><?php echo (int) $c->comment_parent ? ' (reply)' : ''; ?></span><?php endif; ?>
 							<a lang="ta" href="<?php echo esc_url( get_permalink( $ch ) . '#comment-' . (int) $c->comment_ID ); ?>" style="font-weight:600"><?php echo esc_html( ( $st_ ? get_the_title( $st_ ) . ': ' : '' ) . get_the_title( $ch ) ); ?></a>
 							<span lang="ta"><?php echo nl2br( esc_html( wp_trim_words( $c->comment_content, 40 ) ) ); ?></span>
 						</span>
@@ -151,18 +176,28 @@ $my_status = dm_user_status();
 							<?php wp_nonce_field( 'dm_delcomment_' . $c->comment_ID ); ?>
 							<button class="rn-linkbtn" type="submit">Delete</button>
 						</form>
+						<?php if ( 'all' === $scope && (int) $c->user_id && (int) $c->user_id !== get_current_user_id() && ! user_can( (int) $c->user_id, 'manage_options' ) ) : ?>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="dm_block_reader">
+							<input type="hidden" name="dm_cid" value="<?php echo (int) $c->comment_ID; ?>">
+							<?php wp_nonce_field( 'dm_block_' . $c->comment_ID ); ?>
+							<button class="rn-linkbtn" type="submit">Block reader</button>
+						</form>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 				<?php if ( ! $mine ) : ?><p class="rn-muted" style="padding:18px;margin:0">You have not commented yet. Open a chapter and share what you felt.</p><?php endif; ?>
 			</div>
+			<?php echo rn_account_pager( $c_total, $pg, 'comments', $scope ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 		</section>
 
 	<?php elseif ( 'bookmarks' === $tab ) : ?>
 		<section class="rn-sec">
-			<div><h2>My bookmarks</h2><div class="rn-muted">Places you saved while reading</div></div>
+			<div><h2><?php echo 'all' === $scope ? 'All bookmarks' : 'My bookmarks'; ?></h2><div class="rn-muted"><?php echo 'all' === $scope ? 'Places readers saved while reading' : 'Places you saved while reading'; ?></div></div>
 			<div class="rn-card" style="padding:0;overflow:hidden">
 				<?php
-				$bms = dm_user_bookmarks( get_current_user_id() );
+				$bms = 'all' === $scope ? dm_all_bookmarks( $per, $off ) : dm_user_bookmarks( get_current_user_id(), $per, $off );
+				$b_total = dm_count_marks( 'bm', 'all' === $scope ? 0 : get_current_user_id() );
 				foreach ( $bms as $b ) :
 					$chp = get_post( (int) $b->chapter_id );
 					if ( ! $chp || 'publish' !== $chp->post_status ) {
@@ -174,9 +209,10 @@ $my_status = dm_user_status();
 						<span class="rn-muted" style="font-size:13px"><?php echo esc_html( wp_date( 'd-M-y H:i', strtotime( $b->created_at . ' UTC' ) ) ); ?></span>
 						<span style="flex:1;min-width:200px;display:flex;flex-direction:column">
 							<a lang="ta" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $b->para ); ?>" style="font-weight:600"><?php echo esc_html( ( $sty ? get_the_title( $sty ) . ': ' : '' ) . get_the_title( $chp ) ); ?></a>
-							<span class="rn-muted" style="font-size:14px">Paragraph <?php echo (int) $b->para + 1; ?></span>
+							<span class="rn-muted" style="font-size:14px"><?php echo 'all' === $scope ? '<strong style="color:var(--rn-text)">' . esc_html( $who( $b->user_id ) ) . '</strong> · ' : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>Paragraph <?php echo (int) $b->para + 1; ?></span>
 						</span>
 						<a class="rn-btn ghost" style="min-height:44px;padding:0 18px" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $b->para ); ?>">Open</a>
+						<?php if ( (int) $b->user_id === get_current_user_id() ) : ?>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="dm_remove_mark">
 							<input type="hidden" name="dm_type" value="bookmark">
@@ -184,18 +220,21 @@ $my_status = dm_user_status();
 							<?php wp_nonce_field( 'dm_rmmark' ); ?>
 							<button class="rn-linkbtn" type="submit">Remove</button>
 						</form>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 				<?php if ( ! $bms ) : ?><p class="rn-muted" style="padding:18px;margin:0">No bookmarks yet. While reading, tap the bookmark button in the toolbar at the bottom.</p><?php endif; ?>
 			</div>
+			<?php echo rn_account_pager( $b_total, $pg, 'bookmarks', $scope ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 		</section>
 
 	<?php elseif ( 'highlights' === $tab ) : ?>
 		<section class="rn-sec">
-			<div><h2>My highlights</h2><div class="rn-muted">Sentences you highlighted while reading</div></div>
+			<div><h2><?php echo 'all' === $scope ? 'All highlights' : 'My highlights'; ?></h2><div class="rn-muted"><?php echo 'all' === $scope ? 'Sentences readers highlighted, newest first' : 'Sentences you highlighted while reading'; ?></div></div>
 			<div class="rn-card" style="padding:0;overflow:hidden">
 				<?php
-				$hls = dm_user_highlights( get_current_user_id() );
+				$hls = 'all' === $scope ? dm_all_highlights( $per, $off ) : dm_user_highlights( get_current_user_id(), $per, $off );
+				$h_total = dm_count_marks( 'hl', 'all' === $scope ? 0 : get_current_user_id() );
 				foreach ( $hls as $h ) :
 					$chp = get_post( (int) $h->chapter_id );
 					if ( ! $chp || 'publish' !== $chp->post_status ) {
@@ -207,7 +246,9 @@ $my_status = dm_user_status();
 						<span style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px">
 							<a lang="ta" href="<?php echo esc_url( get_permalink( $chp ) . '#p' . (int) $h->para ); ?>" style="font-weight:600"><?php echo esc_html( ( $sty ? get_the_title( $sty ) . ': ' : '' ) . get_the_title( $chp ) ); ?></a>
 							<span lang="ta" class="rn-hlquote hl-<?php echo esc_attr( $h->color ); ?>"><?php echo esc_html( $h->snippet ); ?></span>
+							<?php if ( 'all' === $scope ) : ?><span class="rn-muted" style="font-size:14px">Highlighted by <strong style="color:var(--rn-text)"><?php echo esc_html( $who( $h->user_id ) ); ?></strong></span><?php endif; ?>
 						</span>
+						<?php if ( (int) $h->user_id === get_current_user_id() ) : ?>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="dm_remove_mark">
 							<input type="hidden" name="dm_type" value="highlight">
@@ -217,10 +258,12 @@ $my_status = dm_user_status();
 							<?php wp_nonce_field( 'dm_rmmark' ); ?>
 							<button class="rn-linkbtn" type="submit">Remove</button>
 						</form>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 				<?php if ( ! $hls ) : ?><p class="rn-muted" style="padding:18px;margin:0">No highlights yet. While reading, tap the highlighter in the toolbar, then tap a sentence.</p><?php endif; ?>
 			</div>
+			<?php echo rn_account_pager( $h_total, $pg, 'highlights', $scope ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 		</section>
 
 	<?php else : ?>

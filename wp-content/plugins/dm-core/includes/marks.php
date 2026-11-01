@@ -63,16 +63,39 @@ function dm_marks_for( $chapter_id, $user_id ) {
 	);
 }
 
-function dm_user_bookmarks( $user_id ) {
+function dm_user_bookmarks( $user_id, $limit = 20, $offset = 0 ) {
 	global $wpdb;
 	$t = dm_bm_table();
-	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE user_id = %d ORDER BY created_at DESC LIMIT 200", $user_id ) ); // phpcs:ignore WordPress.DB
+	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE user_id = %d ORDER BY created_at DESC LIMIT %d OFFSET %d", $user_id, $limit, $offset ) ); // phpcs:ignore WordPress.DB
 }
 
-function dm_user_highlights( $user_id ) {
+/** Admin view: bookmarks of all readers (newest first). */
+function dm_all_bookmarks( $limit = 20, $offset = 0 ) {
+	global $wpdb;
+	$t = dm_bm_table();
+	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t ORDER BY created_at DESC LIMIT %d OFFSET %d", $limit, $offset ) ); // phpcs:ignore WordPress.DB
+}
+
+function dm_user_highlights( $user_id, $limit = 20, $offset = 0 ) {
 	global $wpdb;
 	$t = dm_hl_table();
-	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE user_id = %d ORDER BY chapter_id ASC, para ASC, sent ASC LIMIT 500", $user_id ) ); // phpcs:ignore WordPress.DB
+	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t WHERE user_id = %d ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d", $user_id, $limit, $offset ) ); // phpcs:ignore WordPress.DB
+}
+
+function dm_all_highlights( $limit = 20, $offset = 0 ) {
+	global $wpdb;
+	$t = dm_hl_table();
+	return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $t ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d", $limit, $offset ) ); // phpcs:ignore WordPress.DB
+}
+
+/** Totals for paging. $kind: bm or hl. $user_id 0 = all readers. */
+function dm_count_marks( $kind, $user_id = 0 ) {
+	global $wpdb;
+	$t = 'bm' === $kind ? dm_bm_table() : dm_hl_table();
+	if ( $user_id ) {
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t WHERE user_id = %d", $user_id ) ); // phpcs:ignore WordPress.DB
+	}
+	return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $t" ); // phpcs:ignore WordPress.DB
 }
 
 /** AJAX from the reading page. */
