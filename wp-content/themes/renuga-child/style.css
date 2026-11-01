@@ -1,21 +1,14 @@
 /*
 Theme Name:   Renuga Child
 Theme URI:    https://github.com/
-Description:  Kadence child theme for the Renuga Tamil Novels website ("Secret Garden" light theme).
+Description:  Kadence child theme for the Renuga Tamil Novels website (approved teal design, day/night reading mode).
 Author:       Renuga Novels dev team
 Template:     kadence
-Version:      0.1.0
+Version:      0.2.0
 Text Domain:  renuga-child
 */
 
-/* Design tokens live in assets/css/tokens.css. Component styles go below. */
-
-body {
-	background: var(--rn-cream);
-	color: var(--rn-forest);
-	font-family: var(--rn-font-body);
-	line-height: 1.8; /* Tamil script needs more line height than Latin */
-}
+/* Tokens live in assets/css/tokens.css. Layout and components in assets/css/main.css. */
 
 /* Must-fix: emoji always 1em */
 img.emoji,

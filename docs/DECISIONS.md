@@ -30,3 +30,6 @@ Newest at the bottom. Add a line whenever you decide something, so nobody repeat
 - Reading controls sit at the bottom of the reading page.
 - Open: confirm with Kavi that "she ok with that" meant the teal palette as it is.
 - 2026-10-31: dm-core spec drafted in docs/DM_CORE_SPEC.md (modules, build order, open questions).
+- 2026-10-31: Author answers: email-only login; approve each new reader once (no per-comment approval); hosting decided later; about 15 novels x 10 chapters.
+- 2026-10-31: Build step 1 done: dm_story and dm_chapter post types (dm-core 0.2.0), child theme templates (home, ongoing, completed, story, chapter), hamburger drawer, reading controls at the bottom. Needs pages with slugs "ongoing" and "completed" in WordPress.
+- 2026-11-01: Home page built to match the prototype (logo, stats, trending, author box, updates from chapters). Rating, notify box, announcements, author text still pending.

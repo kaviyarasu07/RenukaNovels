@@ -9,6 +9,7 @@ Stories use a custom post type `dm_story` (chapters as child posts `dm_chapter`)
 - Ratings: 1-5 stars per user per story, one rating each, editable. Table `dm_ratings(user_id, story_id, stars, created_at)`; average cached in story meta.
 - Bookmarks: per user per story, plus last-read paragraph for "Continue Where You Left Off". Table `dm_bookmarks(user_id, story_id, chapter_id, para, pct, updated_at)`.
 - Reading stays open to everyone, no login.
+- Registration: email and password only (no social login). A new account starts as `pending`. Renuga approves it from an admin screen "Reader approvals" (Approve / Reject). Until approved the reader can read but cannot comment, rate or bookmark, and sees a short "Waiting for approval" message. Store as user meta `dm_status` (pending, approved, rejected). Email verification of the address is recommended on top, to stop fake sign-ups.
 
 ## 2. Announcements (correction 8)
 - Admin screen "Announcements": a text box, optional "pin to top", Publish button. CPT `dm_announcement`.
@@ -21,9 +22,10 @@ Stories use a custom post type `dm_story` (chapters as child posts `dm_chapter`)
 - Admin dashboard: daily and monthly views, per story and per chapter.
 
 ## 4. Moderation and spam
-- Comments and ratings held for approval, or auto-approved after a user's first approved comment (setting).
+- Reader approval is the gate (see Engagement). Once a reader is approved, their comments and ratings publish immediately, no per-comment approval.
+- Admin can still delete or hide a comment or rating afterwards.
 - Block list: words, email, IP. Honeypot field plus rate limit (e.g. 5 comments per 10 minutes).
-- Admin can approve, spam, trash, ban a user.
+- Admin can approve, reject, ban or unban a user, and trash or restore comments.
 
 ## 5. Notifications (web push)
 - Browser push through a service worker, VAPID keys, subscriptions in `dm_push_subs`.
@@ -43,8 +45,13 @@ Stories use a custom post type `dm_story` (chapters as child posts `dm_chapter`)
 6. Moderation
 7. Push notifications
 
+## Decisions from the author (31-Oct-2026)
+- Login: email only.
+- Moderation: approve each new reader once; comments are not approved one by one.
+- Hosting: not decided. Build the application first; she chooses hosting later.
+- Content size: about 15 novels, about 10 chapters each (about 150 chapters). A bulk import tool is worth planning.
+
 ## Open questions
-- Social login (Google) or email only?
-- Does Renuga want to approve every comment, or only the first from each user?
-- Hosting provider and budget for backups.
+- Should an email notify Renuga on each new registration, and the reader when approved or rejected? (Needs a mail setup that works on the chosen host.)
 - Tamil comment input and Tamil search need testing.
+- Hosting is open, so backups, SSL and the push-notification test wait for it.

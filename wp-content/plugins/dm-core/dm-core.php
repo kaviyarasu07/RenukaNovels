@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: DM Core
- * Description: Core features for the Renuga Novels website: engagement (comments, ratings, bookmarks), view stats, moderation and push notifications.
- * Version:     0.1.0
+ * Description: Core features for the Renuga Novels website: stories and chapters, engagement (comments, ratings, bookmarks), view stats, moderation and push notifications.
+ * Version:     0.2.2
  * Author:      Renuga Novels dev team
  * Text Domain: dm-core
  *
@@ -13,19 +13,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DM_CORE_VERSION', '0.1.0' );
+define( 'DM_CORE_VERSION', '0.2.2' );
 define( 'DM_CORE_PATH', plugin_dir_path( __FILE__ ) );
 
 /**
- * Planned modules (one folder each under includes/):
- *  - engagement:    comments, ratings, bookmarks (login required)
- *  - stats:         views per story and chapter, daily and monthly
- *  - moderation:    comment and rating moderation, spam blocking
- *  - notifications: web push notifications
- *
- * Each module registers its own hooks from a single init() method.
+ * Modules (one file or folder each under includes/). See docs/DM_CORE_SPEC.md.
+ *  - post-types:    stories and chapters                (built)
+ *  - engagement:    comments, ratings, bookmarks        (planned)
+ *  - stats:         views per story and chapter         (planned)
+ *  - moderation:    reader approval, spam blocking      (planned)
+ *  - notifications: web push                            (planned)
  */
-function dm_core_init() {
-	// Modules are loaded here as they are built.
+require_once DM_CORE_PATH . 'includes/post-types.php';
+require_once DM_CORE_PATH . 'includes/sample-data.php'; // development only, remove before launch
+
+/** Refresh permalinks once on activation so /story/ and /chapter/ work. */
+function dm_core_activate() {
+	dm_register_post_types();
+	flush_rewrite_rules();
 }
-add_action( 'plugins_loaded', 'dm_core_init' );
+register_activation_hook( __FILE__, 'dm_core_activate' );
