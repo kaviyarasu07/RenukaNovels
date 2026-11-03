@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RN_CHILD_VERSION', '0.10.0' );
+define( 'RN_CHILD_VERSION', '0.11.3' );
 
 function rn_child_setup() {
 	add_theme_support( 'title-tag' );
@@ -41,7 +41,7 @@ function rn_menu_items() {
 		array( 'Ongoing', home_url( '/ongoing/' ), 'ongoing' ),
 		array( 'Completed', home_url( '/completed/' ), 'completed' ),
 		array( 'Updates', home_url( '/updates/' ), 'updates' ),
-		array( 'Bookmarks', home_url( '/#bookmarks' ), '' ),
+		array( 'Bookmarks', rn_account_url( 'bookmarks' ), '' ),
 		array( 'About Us', home_url( '/about/' ), 'about' ),
 		array( 'Contact Us', home_url( '/contact/' ), 'contact' ),
 	);
@@ -319,4 +319,30 @@ function rn_ep_item( $chapter, $current_id = 0, $counts = array() ) {
 	</a>
 	<?php
 	return ob_get_clean();
+}
+
+
+/**
+ * Where "Begin Reading" goes for a first-time visitor: episode 1 of the most recently updated ongoing story
+ * (or of a completed story when nothing is ongoing). Returning readers are sent to their last place by JS.
+ */
+function rn_begin_url() {
+	$latest = get_posts( array( 'post_type' => 'dm_chapter', 'post_status' => 'publish', 'posts_per_page' => -1, 'orderby' => 'date', 'order' => 'DESC' ) );
+	$pick   = array();
+	foreach ( $latest as $c ) {
+		$sid = (int) $c->post_parent;
+		if ( ! $sid || 'publish' !== get_post_status( $sid ) ) {
+			continue;
+		}
+		$kind = dm_story_status( $sid );
+		if ( ! isset( $pick[ $kind ] ) ) {
+			$pick[ $kind ] = $sid;
+		}
+	}
+	$sid = isset( $pick['ongoing'] ) ? $pick['ongoing'] : ( isset( $pick['completed'] ) ? $pick['completed'] : 0 );
+	if ( ! $sid ) {
+		return '';
+	}
+	$chapters = dm_story_chapters( $sid );
+	return $chapters ? get_permalink( $chapters[0] ) : get_permalink( $sid );
 }

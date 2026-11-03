@@ -116,6 +116,8 @@ function dm_handle_register() {
 		dm_auth_redirect( $tab + array( 'dm_err' => 'fields' ), $to );
 	}
 	update_user_meta( $uid, 'dm_status', 'pending' );
+	update_user_meta( $uid, 'dm_notif_seen', time() );
+	dm_notify_admins( 'register', 'New reader waiting for approval: ' . $name, home_url( '/my-account/?tab=readers' ), 'reg-' . $uid );
 	// Tell the admin. Silent if the server cannot send mail (local sites usually cannot).
 	wp_mail( get_option( 'admin_email' ), 'New reader waiting for approval', "A new reader registered: $name <$email>.\nApprove or reject at " . home_url( '/my-account/?tab=readers' ) );
 	wp_set_current_user( $uid );
@@ -170,6 +172,9 @@ function dm_handle_set_status() {
 	$u = get_userdata( $uid );
 	if ( $u && in_array( 'dm_reader', (array) $u->roles, true ) ) {
 		update_user_meta( $uid, 'dm_status', $status );
+		global $wpdb;
+		$wpdb->delete( dm_notif_table(), array( 'dedupe' => 'reg-' . $uid ), array( '%s' ) ); // phpcs:ignore WordPress.DB -- the "waiting for approval" notice is done.
+		dm_notify( $uid, 'account', 'approved' === $status ? 'Your account is approved. You can now comment, rate and react.' : 'Your account was not approved.', home_url( '/my-account/' ), 'status' );
 		if ( 'approved' === $status ) {
 			wp_mail( $u->user_email, 'Your account is approved', 'You can now comment, rate and bookmark stories at ' . home_url( '/' ) );
 		}

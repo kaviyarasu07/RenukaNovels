@@ -19,6 +19,19 @@ function dm_comment_back( $chapter_id, $anchor = 'comments', $msg = '' ) {
 	exit;
 }
 
+/** Tell the person who was answered, and the admins (unless they are the same people). */
+function dm_notify_on_comment( $cid, $post_id, $reply_user, $user, $text ) {
+	$uid   = (int) $user->ID;
+	$title = get_the_title( $post_id );
+	$url   = get_permalink( $post_id ) . '#comment-' . $cid;
+	$told  = array( $uid );
+	if ( $reply_user && $reply_user !== $uid ) {
+		dm_notify( $reply_user, 'reply', $user->display_name . ' replied to your comment on ' . $title, $url, 'reply-' . $cid );
+		$told[] = $reply_user;
+	}
+	dm_notify_admins( 'comment', $user->display_name . ( $reply_user ? ' replied' : ' commented' ) . ' on ' . $title . ': ' . dm_notif_cut( $text, 60 ), $url, 'comment-' . $cid, $told );
+}
+
 function dm_handle_post_comment() {
 	$chapter = isset( $_POST['dm_chapter'] ) ? absint( $_POST['dm_chapter'] ) : 0;
 	// Comments go under a chapter or under a story page.
@@ -56,8 +69,9 @@ function dm_handle_post_comment() {
 			$parent = (int) $p->comment_parent; // replies stay one level deep.
 		}
 	}
-	$user = wp_get_current_user();
-	$id   = wp_insert_comment(
+	$reply_user = ( $parent && ! empty( $p ) ) ? (int) $p->user_id : 0; // the person being answered (before the reply is attached to its top-level comment).
+	$user       = wp_get_current_user();
+	$id         = wp_insert_comment(
 		array(
 			'comment_post_ID'      => $chapter,
 			'comment_parent'       => $parent,
@@ -69,6 +83,9 @@ function dm_handle_post_comment() {
 			'comment_type'         => 'comment',
 		)
 	);
+	if ( $id ) {
+		dm_notify_on_comment( (int) $id, $chapter, $reply_user, $user, $text );
+	}
 	dm_comment_back( $chapter, $id ? 'comment-' . $id : 'comments' );
 }
 add_action( 'admin_post_dm_post_comment', 'dm_handle_post_comment' );

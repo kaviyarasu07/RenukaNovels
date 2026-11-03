@@ -79,6 +79,7 @@ $rn_no     = (int) get_post_meta( get_the_ID(), 'dm_chapter_no', true );
 </div>
 <div class="rn-tools" role="toolbar" aria-label="Reading controls">
 	<div class="rn-hlbar" id="rn-hlbar" hidden role="group" aria-label="Highlighter">
+		<span class="rn-hlhint">Tap a sentence to highlight it</span>
 		<button type="button" class="rn-sw" data-color="yellow" aria-label="Yellow" style="--sw:var(--rn-hl-yellow)"></button>
 		<button type="button" class="rn-sw" data-color="green" aria-label="Green" style="--sw:var(--rn-hl-green)"></button>
 		<button type="button" class="rn-sw" data-color="pink" aria-label="Pink" style="--sw:var(--rn-hl-pink)"></button>

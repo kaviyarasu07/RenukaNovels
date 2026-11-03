@@ -34,6 +34,7 @@ function dm_maybe_install_tables() {
 	dm_install_marks_tables();
 	dm_install_reactions_table();
 	dm_install_views_table();
+	dm_install_notifications_table();
 	update_option( 'dm_db_version', DM_CORE_VERSION );
 }
 add_action( 'init', 'dm_maybe_install_tables', 98 );
@@ -93,6 +94,8 @@ function dm_handle_rate() {
 		array( '%d', '%d', '%d', '%s' )
 	);
 	dm_refresh_rating( $story );
+	$rater = wp_get_current_user();
+	dm_notify_admins( 'rating', $rater->display_name . ' rated ' . get_the_title( $story ) . ': ' . $stars . ' of 5', get_permalink( $story ) . '#rate', 'rate-' . $story . '-' . $rater->ID, array( (int) $rater->ID ) );
 	wp_safe_redirect( add_query_arg( 'dm_msg', 'rated', get_permalink( $story ) ) . '#rate' );
 	exit;
 }

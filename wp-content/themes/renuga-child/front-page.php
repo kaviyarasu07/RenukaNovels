@@ -13,7 +13,7 @@ $latest    = rn_updates( 6 );
 			<h1>Stories that bloom, like a secret garden</h1>
 			<p style="margin:0;font-size:20px;font-weight:600">Stories</p>
 			<div style="display:flex;gap:12px;flex-wrap:wrap">
-				<?php if ( $ongoing ) : ?><a class="rn-btn" href="<?php echo esc_url( get_permalink( $ongoing[0] ) ); ?>">Begin Reading</a><?php endif; ?>
+				<?php $rn_begin = rn_begin_url(); if ( $rn_begin ) : ?><a class="rn-btn" id="rn-begin" data-begin href="<?php echo esc_url( $rn_begin ); ?>">Begin Reading</a><?php endif; ?>
 				<a class="rn-btn ghost" href="<?php echo esc_url( home_url( '/library/' ) ); ?>">Browse Library</a>
 			</div>
 			<div class="rn-stats">

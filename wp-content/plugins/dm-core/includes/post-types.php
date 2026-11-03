@@ -48,7 +48,7 @@ function dm_register_post_types() {
 			'menu_icon'    => 'dashicons-media-text',
 			'menu_position'=> 6,
 			'rewrite'      => array( 'slug' => 'chapter' ),
-			'supports'     => array( 'title', 'editor', 'page-attributes', 'comments' ),
+			'supports'     => array( 'title', 'editor', 'comments' ), // no page-attributes: its Parent box lists chapters, not stories. The story is chosen in Chapter details.
 		)
 	);
 }
@@ -68,14 +68,35 @@ function dm_story_status_box( $post ) {
 	echo '<label><input type="radio" name="dm_status" value="ongoing"' . checked( $status, 'ongoing', false ) . '> Ongoing</label><br>';
 	echo '<label><input type="radio" name="dm_status" value="completed"' . checked( $status, 'completed', false ) . '> Completed</label>';
 	echo '<p class="description">The short teaser is the "Excerpt" box below the editor.</p>';
+	if ( $post->ID && 'auto-draft' !== $post->post_status ) {
+		echo '<p><a class="button" href="' . esc_url( admin_url( 'post-new.php?post_type=dm_chapter&dm_story=' . (int) $post->ID ) ) . '">Add a chapter to this story</a></p>';
+	}
 }
 
 function dm_chapter_info_box( $post ) {
-	$num = (int) get_post_meta( $post->ID, 'dm_chapter_no', true );
+	$num    = (int) get_post_meta( $post->ID, 'dm_chapter_no', true );
+	$parent = (int) $post->post_parent;
+	if ( ! $parent && isset( $_GET['dm_story'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		$parent = absint( $_GET['dm_story'] ); // phpcs:ignore WordPress.Security.NonceVerification
+	}
+	if ( ! $num && $parent ) { // suggest the next number for this story.
+		$max = 0;
+		foreach ( get_posts( array( 'post_type' => 'dm_chapter', 'post_parent' => $parent, 'post_status' => 'any', 'posts_per_page' => -1, 'fields' => 'ids' ) ) as $cid ) {
+			$max = max( $max, (int) get_post_meta( $cid, 'dm_chapter_no', true ) );
+		}
+		$num = $max + 1;
+	}
+	$stories = get_posts( array( 'post_type' => 'dm_story', 'post_status' => array( 'publish', 'draft', 'pending', 'future' ), 'posts_per_page' => -1, 'orderby' => 'title', 'order' => 'ASC' ) );
 	wp_nonce_field( 'dm_save_chapter', 'dm_chapter_nonce' );
-	echo '<p><label for="dm_chapter_no">Chapter number</label><br>';
+	echo '<p><label for="dm_story_parent"><strong>Story</strong></label><br>';
+	echo '<select id="dm_story_parent" name="dm_story_parent" style="width:100%"><option value="0">&mdash; Choose the story &mdash;</option>';
+	foreach ( $stories as $st ) {
+		echo '<option value="' . (int) $st->ID . '"' . selected( $parent, $st->ID, false ) . '>' . esc_html( get_the_title( $st ) ) . ( 'publish' === $st->post_status ? '' : ' (' . esc_html( $st->post_status ) . ')' ) . '</option>';
+	}
+	echo '</select></p>';
+	echo '<p><label for="dm_chapter_no"><strong>Chapter number</strong></label><br>';
 	echo '<input type="number" min="1" id="dm_chapter_no" name="dm_chapter_no" value="' . esc_attr( $num ? $num : '' ) . '" style="width:100%"></p>';
-	echo '<p class="description">Choose the story in the "Parent" box (Page Attributes).</p>';
+	echo '<p class="description">Choose the story first, then click Save draft or Publish. The episode appears under that story, in the order of its number.</p>';
 }
 
 function dm_save_story_meta( $post_id ) {
@@ -94,6 +115,43 @@ function dm_save_story_meta( $post_id ) {
 	}
 }
 add_action( 'save_post', 'dm_save_story_meta' );
+
+/** Save the chosen story as the chapter's parent (runs on the meta-box save, which carries the nonce). */
+function dm_set_chapter_parent( $data, $postarr ) {
+	if ( 'dm_chapter' !== $data['post_type'] ) {
+		return $data;
+	}
+	if ( isset( $_POST['dm_chapter_nonce'], $_POST['dm_story_parent'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['dm_chapter_nonce'] ) ), 'dm_save_chapter' ) ) {
+		$sid = absint( $_POST['dm_story_parent'] );
+		$data['post_parent'] = ( $sid && 'dm_story' === get_post_type( $sid ) ) ? $sid : 0;
+	}
+	return $data;
+}
+add_filter( 'wp_insert_post_data', 'dm_set_chapter_parent', 10, 2 );
+
+/** Chapters list in the admin: show the story and number. */
+function dm_chapter_columns( $cols ) {
+	$out = array();
+	foreach ( $cols as $k => $v ) {
+		$out[ $k ] = $v;
+		if ( 'title' === $k ) {
+			$out['dm_story'] = 'Story';
+			$out['dm_no']    = 'No.';
+		}
+	}
+	return $out;
+}
+add_filter( 'manage_dm_chapter_posts_columns', 'dm_chapter_columns' );
+
+function dm_chapter_column_data( $col, $post_id ) {
+	if ( 'dm_story' === $col ) {
+		$p = wp_get_post_parent_id( $post_id );
+		echo $p ? esc_html( get_the_title( $p ) ) : '<strong style="color:#b32d2e">No story chosen</strong>';
+	} elseif ( 'dm_no' === $col ) {
+		echo (int) get_post_meta( $post_id, 'dm_chapter_no', true );
+	}
+}
+add_action( 'manage_dm_chapter_posts_custom_column', 'dm_chapter_column_data', 10, 2 );
 
 /** Helpers used by the theme. */
 function dm_story_status( $story_id ) {

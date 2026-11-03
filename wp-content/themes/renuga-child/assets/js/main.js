@@ -83,6 +83,16 @@
 		window.addEventListener('pagehide', record);
 	}
 
+	/* ---- Home page: "Begin Reading" resumes the last place this browser read ---- */
+	var begin = document.querySelector('[data-begin]');
+	if (begin) {
+		var lastList = load(), last = lastList[0];
+		if (last && typeof last.u === 'string' && last.u.indexOf(location.origin + '/') === 0) {
+			begin.href = last.u.split('#')[0] + '#p' + (parseInt(last.p, 10) || 0);
+			if (last.st) { begin.title = last.st + (last.cn ? ' \u00b7 Episode ' + last.cn : ''); }
+		}
+	}
+
 	/* ---- Ongoing page: list the saved stories ---- */
 	var box = document.getElementById('rn-continue');
 	var listEl = document.getElementById('rn-contlist');
@@ -297,7 +307,6 @@
 	hlBtn.addEventListener('click', function () {
 		if (!canMark) { needAccount(); return; }
 		mode = !mode; paintMode();
-		if (mode) { toast('Tap a sentence to highlight it.'); }
 	});
 	document.getElementById('rn-hl-done').addEventListener('click', function () { mode = false; paintMode(); });
 	[].forEach.call(bar.querySelectorAll('.rn-sw[data-color]'), function (b) {
@@ -399,4 +408,62 @@
 				.then(function () { busy = false; });
 		});
 	}
+})();
+
+/* ---------- Notification bell: open, close, mark as seen ---------- */
+(function () {
+	var bell = document.getElementById('rn-bell'), panel = document.getElementById('rn-notifs');
+	if (!bell || !panel) { return; }
+	var badge = document.getElementById('rn-badge'), marked = false;
+	function place() {
+		if (window.innerWidth < 720) { panel.style.top = Math.round(bell.getBoundingClientRect().bottom + 10) + 'px'; } else { panel.style.top = ''; }
+	}
+	function setOpen(open) {
+		panel.hidden = !open;
+		bell.setAttribute('aria-expanded', open ? 'true' : 'false');
+		if (open) {
+			place();
+			if (!marked && badge && !badge.hidden) {
+				marked = true;
+				var fd = new FormData();
+				fd.append('action', 'dm_notif_seen');
+				fd.append('nonce', bell.getAttribute('data-nonce'));
+				fetch(bell.getAttribute('data-ajax'), { method: 'POST', body: fd, credentials: 'same-origin' }).then(function () { badge.hidden = true; }).catch(function () { marked = false; });
+			}
+		}
+	}
+	bell.addEventListener('click', function (e) { e.stopPropagation(); setOpen(panel.hidden); });
+	document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && e.target !== bell) { setOpen(false); } });
+	document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) { setOpen(false); bell.focus(); } });
+	window.addEventListener('resize', function () { if (!panel.hidden) { place(); } });
+})();
+
+/* ---------- Reading controls: shown for 1.5 s while scrolling, then hidden ---------- */
+(function () {
+	var tools = document.querySelector('.rn-tools'), art = document.getElementById('rn-article');
+	if (!tools || !art) { return; }
+	var HIDE_MS = 1500, timer = null, over = false;
+	var hlBar = document.getElementById('rn-hlbar'), hlBtn = document.getElementById('rn-hl');
+	function busy() {
+		/* stay visible while the pointer is on it, a button has focus, or the highlighter is in use */
+		return over || tools.contains(document.activeElement) || (hlBar && !hlBar.hidden) || (hlBtn && hlBtn.getAttribute('aria-pressed') === 'true');
+	}
+	function hide() {
+		if (busy()) { timer = setTimeout(hide, HIDE_MS); return; }
+		tools.classList.add('is-hidden');
+	}
+	function show() {
+		tools.classList.remove('is-hidden');
+		clearTimeout(timer);
+		timer = setTimeout(hide, HIDE_MS);
+	}
+	show(); /* visible for a moment when the page opens, so readers know it is there */
+	window.addEventListener('scroll', show, { passive: true });
+	tools.addEventListener('focusin', show);
+	tools.addEventListener('click', show);
+	tools.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { over = true; show(); } });
+	tools.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { over = false; show(); } });
+	/* bring it back without scrolling: tap the story text, or move the mouse near the bottom edge */
+	art.addEventListener('click', show);
+	window.addEventListener('mousemove', function (e) { if (e.clientY > window.innerHeight - 90) { show(); } }, { passive: true });
 })();

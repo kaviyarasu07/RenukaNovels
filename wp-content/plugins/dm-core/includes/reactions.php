@@ -102,6 +102,8 @@ function dm_ajax_react() {
 	} else {
 		$wpdb->replace( $t, array( 'user_id' => $uid, 'chapter_id' => $chapter, 'kind' => $kind, 'created_at' => current_time( 'mysql', true ) ), array( '%d', '%d', '%s', '%s' ) ); // phpcs:ignore WordPress.DB
 		$mine = $kind;
+		$who  = wp_get_current_user();
+		dm_notify_admins( 'react', $who->display_name . ' reacted ' . $options[ $kind ][0] . ' on ' . get_the_title( $chapter ), get_permalink( $chapter ) . '#rn-end', 'react-' . $chapter . '-' . $uid, array( $uid ) );
 	}
 	wp_send_json_success( array( 'counts' => dm_reaction_counts( $chapter ), 'mine' => $mine ) );
 }
