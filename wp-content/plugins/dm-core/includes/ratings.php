@@ -32,6 +32,8 @@ function dm_maybe_install_tables() {
 		KEY story_id (story_id)
 	) $charset;" );
 	dm_install_marks_tables();
+	dm_install_reactions_table();
+	dm_install_views_table();
 	update_option( 'dm_db_version', DM_CORE_VERSION );
 }
 add_action( 'init', 'dm_maybe_install_tables', 98 );

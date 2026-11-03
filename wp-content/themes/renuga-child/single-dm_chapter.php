@@ -9,9 +9,18 @@ $pos      = array_search( get_the_ID(), $ids, true );
 $prev     = ( false !== $pos && $pos > 0 ) ? $chapters[ $pos - 1 ] : null;
 $next     = ( false !== $pos && $pos < count( $chapters ) - 1 ) ? $chapters[ $pos + 1 ] : null;
 ?>
+<?php
+$rn_counts = dm_comment_counts_all();
+$rn_can    = dm_can_engage();
+$rn_st     = dm_user_status();
+$rn_ro     = dm_reaction_options();
+$rn_rc     = dm_reaction_counts( get_the_ID() );
+$rn_mine   = $rn_can ? dm_user_reaction( get_the_ID() ) : '';
+$rn_no     = (int) get_post_meta( get_the_ID(), 'dm_chapter_no', true );
+?>
 <div class="rn-wrap">
-	<div class="rn-read">
-		<div>
+	<div class="rn-readgrid">
+		<div class="rn-rhead">
 			<?php if ( $story ) : ?><a href="<?php echo esc_url( get_permalink( $story ) ); ?>" lang="ta">&larr; <?php echo esc_html( get_the_title( $story ) ); ?></a><?php endif; ?>
 			<h1 lang="ta" style="font-size:28px;margin-top:8px"><?php the_title(); ?></h1>
 		</div>
@@ -33,11 +42,39 @@ $next     = ( false !== $pos && $pos < count( $chapters ) - 1 ) ? $chapters[ $po
 			data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
 			data-nonce="<?php echo esc_attr( dm_can_engage() ? wp_create_nonce( 'dm_mark' ) : '' ); ?>"
 			data-marks="<?php echo esc_attr( wp_json_encode( dm_can_engage() ? dm_marks_for( get_the_ID(), get_current_user_id() ) : array( 'bm' => null, 'hl' => array() ) ) ); ?>"><?php the_content(); ?></div>
-		<nav class="rn-chnav" aria-label="Chapters">
+		<section class="rn-card rn-endcard" id="rn-end" aria-labelledby="rn-end-h">
+			<div class="rn-endline"><span class="rn-endtick" aria-hidden="true"></span><h2 id="rn-end-h">End of Episode <?php echo (int) $rn_no; ?></h2></div>
+			<p class="rn-endask">How did this episode feel?</p>
+			<div class="rn-reacts" id="rn-reacts" role="group" aria-label="Reactions"
+				data-chapter="<?php echo (int) get_the_ID(); ?>"
+				data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+				data-nonce="<?php echo esc_attr( $rn_can ? wp_create_nonce( 'dm_react' ) : '' ); ?>"
+				data-state="<?php echo esc_attr( $rn_can ? 'ok' : ( is_user_logged_in() ? 'pending' : 'guest' ) ); ?>"
+				data-login="<?php echo esc_url( dm_login_page_url( array( 'redirect_to' => get_permalink() . '#rn-end' ) ) ); ?>">
+				<?php foreach ( $rn_ro as $key => $opt ) : $n = isset( $rn_rc[ $key ] ) ? (int) $rn_rc[ $key ] : 0; ?>
+					<button type="button" class="rn-react<?php echo $rn_mine === $key ? ' on' : ''; ?>" data-kind="<?php echo esc_attr( $key ); ?>" aria-pressed="<?php echo $rn_mine === $key ? 'true' : 'false'; ?>" aria-label="<?php echo esc_attr( $opt[1] ); ?>">
+						<span class="rn-emoji" aria-hidden="true"><?php echo esc_html( $opt[0] ); ?></span><span class="rn-rcount"><?php echo $n ? (int) $n : ''; ?></span>
+					</button>
+				<?php endforeach; ?>
+			</div>
+			<p class="rn-muted rn-reactmsg" id="rn-reactmsg" role="status" aria-live="polite"><?php echo $rn_can ? '' : ( is_user_logged_in() ? 'Reactions open once the author approves your account.' : '' ); ?><?php if ( ! is_user_logged_in() ) : ?><a href="<?php echo esc_url( dm_login_page_url( array( 'redirect_to' => get_permalink() . '#rn-end' ) ) ); ?>">Log in</a> to react.<?php endif; ?></p>
+		</section>
+		<nav class="rn-chnav" aria-label="Episodes">
 			<?php if ( $prev ) : ?><a class="rn-btn ghost" href="<?php echo esc_url( get_permalink( $prev ) ); ?>">&larr; Previous</a><?php else : ?><span></span><?php endif; ?>
-			<?php if ( $next ) : ?><a class="rn-btn" href="<?php echo esc_url( get_permalink( $next ) ); ?>">Next chapter &rarr;</a><?php endif; ?>
+			<?php if ( $next ) : ?><a class="rn-btn" href="<?php echo esc_url( get_permalink( $next ) ); ?>">Next episode &rarr;</a><?php endif; ?>
 		</nav>
-		<?php get_template_part( 'template-parts/comments' ); ?>
+		<?php if ( $story ) : ?>
+		<aside class="rn-eplist" aria-label="All episodes" data-readlist="<?php echo (int) $story->ID; ?>">
+			<div class="rn-ephead">
+				<h2>All Episodes</h2>
+				<span class="rn-muted rn-readcount" data-readcount>0 / <?php echo (int) count( $chapters ); ?> read</span>
+			</div>
+			<div class="rn-eps">
+				<?php foreach ( $chapters as $c ) { echo rn_ep_item( $c, get_the_ID(), $rn_counts ); } // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			</div>
+		</aside>
+		<?php endif; ?>
+		<div class="rn-rcomments"><?php get_template_part( 'template-parts/comments' ); ?></div>
 	</div>
 </div>
 <div class="rn-tools" role="toolbar" aria-label="Reading controls">

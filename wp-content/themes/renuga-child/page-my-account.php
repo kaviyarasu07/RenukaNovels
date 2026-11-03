@@ -12,6 +12,7 @@ $pending_n = $is_admin ? count( rn_pending_readers() ) : 0;
 if ( $is_admin ) {
 	$tabs['announcements'] = 'Announcements';
 	$tabs['readers']       = 'Reader approvals' . ( $pending_n ? ' (' . $pending_n . ')' : '' );
+	$tabs['stats']         = 'Stats';
 }
 $tabs['reading']    = 'Reading';
 $tabs['bookmarks']  = 'Bookmarks';
@@ -135,6 +136,153 @@ $who       = function ( $uid ) {
 				<?php if ( ! $readers ) : ?><p class="rn-muted" style="padding:18px;margin:0">No readers have registered yet.</p><?php endif; ?>
 			</div>
 			<?php echo rn_account_pager( $rq->get_total(), $pg, 'readers' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+		</section>
+
+	<?php elseif ( 'stats' === $tab && $is_admin ) : ?>
+		<?php
+		$period  = ( isset( $_GET['period'] ) && 'monthly' === $_GET['period'] ) ? 'monthly' : 'daily'; // phpcs:ignore WordPress.Security.NonceVerification
+		$sid     = isset( $_GET['story'] ) ? absint( $_GET['story'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( $sid && 'dm_story' !== get_post_type( $sid ) ) {
+			$sid = 0;
+		}
+		$stories   = get_posts( array( 'post_type' => 'dm_story', 'post_status' => 'publish', 'posts_per_page' => -1, 'orderby' => 'title', 'order' => 'ASC' ) );
+		$chapters_all = get_posts( array( 'post_type' => 'dm_chapter', 'post_status' => 'publish', 'posts_per_page' => -1 ) );
+		$by_story  = array();
+		foreach ( $chapters_all as $ch ) {
+			$by_story[ (int) $ch->post_parent ][] = $ch;
+		}
+		$ro        = dm_reaction_options();
+		$ccount    = dm_comment_counts_all();
+		$rcount    = dm_reaction_counts_all();
+		$today     = current_time( 'Y-m-d' );
+		$since     = 'monthly' === $period ? gmdate( 'Y-m-01', strtotime( $today . ' -11 months' ) ) : gmdate( 'Y-m-d', strtotime( $today . ' -29 days' ) );
+		$range_lbl = 'monthly' === $period ? 'Last 12 months' : 'Last 30 days';
+		$pviews    = dm_views_by_chapter_since( $since );
+		$series    = dm_views_series( $period, $sid );
+		$daily     = 'daily' === $period ? $series : dm_views_series( 'daily', $sid );
+		$vals      = array_map( function ( $r ) { return $r[2]; }, $series );
+		$maxv      = max( 1, $vals ? max( $vals ) : 1 );
+		$dvals     = array_map( function ( $r ) { return $r[2]; }, $daily );
+		$v_today   = $dvals ? end( $dvals ) : 0;
+		$v_week    = array_sum( array_slice( $dvals, -7 ) );
+		$v_month   = array_sum( $dvals );
+		$scope_ids = $sid ? ( isset( $by_story[ $sid ] ) ? wp_list_pluck( $by_story[ $sid ], 'ID' ) : array() ) : wp_list_pluck( $chapters_all, 'ID' );
+		$v_total   = 0;
+		$cm_total  = 0;
+		$rx_total  = 0;
+		foreach ( $scope_ids as $cid ) {
+			$v_total  += (int) get_post_meta( $cid, 'dm_views', true );
+			$cm_total += isset( $ccount[ $cid ] ) ? $ccount[ $cid ] : 0;
+			$rx_total += isset( $rcount[ $cid ] ) ? array_sum( $rcount[ $cid ] ) : 0;
+		}
+		if ( $sid ) {
+			$cm_total += isset( $ccount[ $sid ] ) ? $ccount[ $sid ] : 0;
+		} else {
+			foreach ( $stories as $st_obj ) {
+				$cm_total += isset( $ccount[ $st_obj->ID ] ) ? $ccount[ $st_obj->ID ] : 0;
+			}
+		}
+		$url_for = function ( $args ) use ( $period, $sid ) {
+			return add_query_arg( array_merge( array( 'tab' => 'stats', 'period' => $period, 'story' => $sid ), $args ), home_url( '/my-account/' ) );
+		};
+		$react_line = function ( $cid ) use ( $ro, $rcount ) {
+			$out = '';
+			foreach ( $ro as $key => $opt ) {
+				if ( ! empty( $rcount[ $cid ][ $key ] ) ) {
+					$out .= '<span class="rn-rx" title="' . esc_attr( $opt[1] ) . '"><span aria-hidden="true">' . esc_html( $opt[0] ) . '</span> ' . (int) $rcount[ $cid ][ $key ] . '<span class="screen-reader-text"> ' . esc_html( $opt[1] ) . '</span></span> ';
+				}
+			}
+			return $out ? $out : '<span class="rn-muted">&ndash;</span>';
+		};
+		?>
+		<section class="rn-sec">
+			<div><h2>Stats</h2><div class="rn-muted">Views count once per visitor per episode per day. Your own (admin) visits and search-engine bots are not counted.</div></div>
+			<nav class="rn-filters" aria-label="Period">
+				<a href="<?php echo esc_url( $url_for( array( 'period' => 'daily' ) ) ); ?>"<?php echo 'daily' === $period ? ' aria-current="true"' : ''; ?>>Daily (30 days)</a>
+				<a href="<?php echo esc_url( $url_for( array( 'period' => 'monthly' ) ) ); ?>"<?php echo 'monthly' === $period ? ' aria-current="true"' : ''; ?>>Monthly (12 months)</a>
+			</nav>
+			<nav class="rn-filters" aria-label="Story">
+				<a href="<?php echo esc_url( $url_for( array( 'story' => 0 ) ) ); ?>"<?php echo ! $sid ? ' aria-current="true"' : ''; ?>>All stories</a>
+				<?php foreach ( $stories as $st_obj ) : ?>
+					<a lang="ta" href="<?php echo esc_url( $url_for( array( 'story' => $st_obj->ID ) ) ); ?>"<?php echo $sid === (int) $st_obj->ID ? ' aria-current="true"' : ''; ?>><?php echo esc_html( get_the_title( $st_obj ) ); ?></a>
+				<?php endforeach; ?>
+			</nav>
+			<div class="rn-statgrid">
+				<div class="rn-card rn-stat"><span class="rn-muted">Total views</span><strong><?php echo esc_html( number_format_i18n( $v_total ) ); ?></strong></div>
+				<div class="rn-card rn-stat"><span class="rn-muted">Today</span><strong><?php echo esc_html( number_format_i18n( $v_today ) ); ?></strong></div>
+				<div class="rn-card rn-stat"><span class="rn-muted">Last 7 days</span><strong><?php echo esc_html( number_format_i18n( $v_week ) ); ?></strong></div>
+				<div class="rn-card rn-stat"><span class="rn-muted">Last 30 days</span><strong><?php echo esc_html( number_format_i18n( $v_month ) ); ?></strong></div>
+				<div class="rn-card rn-stat"><span class="rn-muted">Comments</span><strong><?php echo esc_html( number_format_i18n( $cm_total ) ); ?></strong></div>
+				<div class="rn-card rn-stat"><span class="rn-muted">Reactions</span><strong><?php echo esc_html( number_format_i18n( $rx_total ) ); ?></strong></div>
+			</div>
+			<div class="rn-card rn-chartcard">
+				<div class="rn-chartHead"><h3><?php echo esc_html( $range_lbl ); ?> &middot; views per <?php echo 'monthly' === $period ? 'month' : 'day'; ?></h3><span class="rn-muted">Highest: <?php echo esc_html( number_format_i18n( max( $vals ) ) ); ?></span></div>
+				<div class="rn-chartscroll">
+					<div class="rn-bars rn-bars-<?php echo esc_attr( $period ); ?>" role="img" aria-label="<?php echo esc_attr( $range_lbl . ': ' . array_sum( $vals ) . ' views in total' ); ?>">
+						<?php foreach ( $series as $i => $pt ) : $h = $pt[2] ? max( 3, round( $pt[2] / $maxv * 100 ) ) : 0; $show = 'monthly' === $period || 0 === ( count( $series ) - 1 - $i ) % 5; ?>
+							<div class="rn-bar" title="<?php echo esc_attr( $pt[0] . ': ' . rn_views_label( $pt[2] ) ); ?>">
+								<span class="rn-barval"><?php echo $pt[2] && 'monthly' === $period ? (int) $pt[2] : ''; ?></span>
+								<span class="rn-barfill" style="height:<?php echo (int) $h; ?>%"></span>
+								<em><?php echo $show ? esc_html( $pt[0] ) : ''; ?></em>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</div>
+			<?php if ( ! $sid ) : ?>
+				<h3>Stories</h3>
+				<div class="rn-card rn-tablewrap">
+					<table class="rn-table">
+						<thead><tr><th scope="col">Story</th><th scope="col"><?php echo esc_html( $range_lbl ); ?></th><th scope="col">Total views</th><th scope="col">Episodes</th><th scope="col">Comments</th><th scope="col">Reactions</th><th scope="col">Rating</th></tr></thead>
+						<tbody>
+						<?php
+						foreach ( $stories as $st_obj ) :
+							$chs = isset( $by_story[ $st_obj->ID ] ) ? $by_story[ $st_obj->ID ] : array();
+							$pv  = 0;
+							$cm  = isset( $ccount[ $st_obj->ID ] ) ? $ccount[ $st_obj->ID ] : 0;
+							$rx  = 0;
+							foreach ( $chs as $ch ) {
+								$pv += isset( $pviews[ $ch->ID ] ) ? $pviews[ $ch->ID ] : 0;
+								$cm += isset( $ccount[ $ch->ID ] ) ? $ccount[ $ch->ID ] : 0;
+								$rx += isset( $rcount[ $ch->ID ] ) ? array_sum( $rcount[ $ch->ID ] ) : 0;
+							}
+							?>
+							<tr>
+								<th scope="row" lang="ta"><a href="<?php echo esc_url( $url_for( array( 'story' => $st_obj->ID ) ) ); ?>"><?php echo esc_html( get_the_title( $st_obj ) ); ?></a></th>
+								<td><?php echo esc_html( number_format_i18n( $pv ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( (int) get_post_meta( $st_obj->ID, 'dm_views', true ) ) ); ?></td>
+								<td><?php echo (int) count( $chs ); ?></td>
+								<td><?php echo (int) $cm; ?></td>
+								<td><?php echo (int) $rx; ?></td>
+								<td><?php echo rn_rating_html( $st_obj->ID ) ? rn_rating_html( $st_obj->ID ) : '<span class="rn-muted">&ndash;</span>'; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+							</tr>
+						<?php endforeach; ?>
+						<?php if ( ! $stories ) : ?><tr><td colspan="7" class="rn-muted">No stories yet.</td></tr><?php endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<p class="rn-muted" style="margin:0">Tap a story to see every episode with its views, comments and reactions.</p>
+			<?php else : ?>
+				<h3 lang="ta"><?php echo esc_html( get_the_title( $sid ) ); ?> &middot; episode by episode</h3>
+				<div class="rn-card rn-tablewrap">
+					<table class="rn-table">
+						<thead><tr><th scope="col">Episode</th><th scope="col"><?php echo esc_html( $range_lbl ); ?></th><th scope="col">Total views</th><th scope="col">Comments</th><th scope="col">Reactions</th></tr></thead>
+						<tbody>
+						<?php foreach ( dm_story_chapters( $sid ) as $ch ) : ?>
+							<tr>
+								<th scope="row"><a href="<?php echo esc_url( get_permalink( $ch ) ); ?>"><span class="rn-muted">#<?php echo (int) get_post_meta( $ch->ID, 'dm_chapter_no', true ); ?></span> <span lang="ta"><?php echo esc_html( get_the_title( $ch ) ); ?></span></a></th>
+								<td><?php echo esc_html( number_format_i18n( isset( $pviews[ $ch->ID ] ) ? $pviews[ $ch->ID ] : 0 ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( (int) get_post_meta( $ch->ID, 'dm_views', true ) ) ); ?></td>
+								<td><?php echo (int) ( isset( $ccount[ $ch->ID ] ) ? $ccount[ $ch->ID ] : 0 ); ?></td>
+								<td><?php echo $react_line( $ch->ID ); // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
+							</tr>
+						<?php endforeach; ?>
+						<?php if ( ! isset( $by_story[ $sid ] ) ) : ?><tr><td colspan="5" class="rn-muted">No episode has been published yet.</td></tr><?php endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<p class="rn-muted" style="margin:0">Comments written on the story page itself (not under an episode): <?php echo (int) ( isset( $ccount[ $sid ] ) ? $ccount[ $sid ] : 0 ); ?>.</p>
+			<?php endif; ?>
 		</section>
 
 	<?php elseif ( 'reading' === $tab ) : ?>

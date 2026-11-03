@@ -88,10 +88,32 @@ function dm_sample_create() {
 			if ( $ch_id && ! is_wp_error( $ch_id ) ) {
 				update_post_meta( $ch_id, 'dm_chapter_no', $i + 1 );
 				update_post_meta( $ch_id, 'dm_sample', 1 );
+				dm_sample_seed_views( $ch_id, $story_id, $i );
 			}
 		}
 	}
 	return $made;
+}
+
+/**
+ * Fake daily views for the last 30 days so the Stats tab has something to show.
+ * Admin visits are not counted, so a fresh test site would otherwise stay at zero.
+ */
+function dm_sample_seed_views( $ch_id, $story_id, $index ) {
+	global $wpdb;
+	$t     = dm_views_table();
+	$total = 0;
+	for ( $d = 29; $d >= 0; $d-- ) {
+		$n = wp_rand( 0, 12 ) + max( 0, 8 - $index * 2 );
+		if ( $n < 1 ) {
+			continue;
+		}
+		$day = gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . " -$d days" ) );
+		$wpdb->query( $wpdb->prepare( "INSERT INTO $t (chapter_id, story_id, day, views) VALUES (%d, %d, %s, %d) ON DUPLICATE KEY UPDATE views = %d", $ch_id, $story_id, $day, $n, $n ) ); // phpcs:ignore WordPress.DB
+		$total += $n;
+	}
+	update_post_meta( $ch_id, 'dm_views', $total );
+	update_post_meta( $story_id, 'dm_views', (int) get_post_meta( $story_id, 'dm_views', true ) + $total );
 }
 
 function dm_sample_remove() {

@@ -21,7 +21,8 @@ function dm_comment_back( $chapter_id, $anchor = 'comments', $msg = '' ) {
 
 function dm_handle_post_comment() {
 	$chapter = isset( $_POST['dm_chapter'] ) ? absint( $_POST['dm_chapter'] ) : 0;
-	if ( ! $chapter || 'dm_chapter' !== get_post_type( $chapter ) || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'dm_comment_' . $chapter ) ) {
+	// Comments go under a chapter or under a story page.
+	if ( ! $chapter || ! in_array( get_post_type( $chapter ), array( 'dm_chapter', 'dm_story' ), true ) || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'dm_comment_' . $chapter ) ) {
 		wp_die( 'Not allowed.', 403 );
 	}
 	if ( ! dm_can_engage() ) {

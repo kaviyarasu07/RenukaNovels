@@ -319,3 +319,84 @@
 		}
 	});
 })();
+
+/* ---------- Episodes: read / reading / not read (this browser), and reactions ---------- */
+(function () {
+	var KEY = 'rn_read';
+	function loadRead() { try { var v = JSON.parse(localStorage.getItem(KEY)); return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; } catch (e) { return {}; } }
+	function markRead(story, ch) {
+		var v = loadRead(), list = v[story] || [];
+		if (list.indexOf(ch) === -1) {
+			list.push(ch); v[story] = list;
+			try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {}
+		}
+	}
+	function paint() {
+		var all = loadRead();
+		[].forEach.call(document.querySelectorAll('[data-readlist]'), function (box) {
+			var done = all[box.getAttribute('data-readlist')] || [];
+			var items = box.querySelectorAll('.rn-ep[data-ch]'), n = 0;
+			[].forEach.call(items, function (a) {
+				var isRead = done.indexOf(a.getAttribute('data-ch')) !== -1;
+				var cur = a.classList.contains('is-current');
+				var tag = a.querySelector('.rn-state');
+				if (isRead) { n++; }
+				a.classList.toggle('is-read', isRead && !cur);
+				if (tag && !cur) { tag.textContent = isRead ? 'Read' : ''; }
+			});
+			var cnt = box.querySelector('[data-readcount]');
+			if (cnt) { cnt.textContent = n + ' / ' + items.length + ' read'; }
+		});
+	}
+	paint();
+
+	/* A chapter counts as read when the reader reaches its end. */
+	var art = document.getElementById('rn-article'), end = document.getElementById('rn-end');
+	if (art && end) {
+		var story = art.getAttribute('data-story-id'), ch = art.getAttribute('data-chapter-id');
+		var done = function () { markRead(story, ch); paint(); };
+		if ('IntersectionObserver' in window) {
+			var io = new IntersectionObserver(function (es) {
+				es.forEach(function (e) { if (e.isIntersecting) { done(); io.disconnect(); } });
+			}, { threshold: 0.4 });
+			io.observe(end);
+		} else {
+			window.addEventListener('scroll', function f() {
+				if (end.getBoundingClientRect().top < window.innerHeight) { done(); window.removeEventListener('scroll', f); }
+			}, { passive: true });
+		}
+	}
+
+	/* Reactions: one per reader per chapter; tap again to remove. */
+	var box = document.getElementById('rn-reacts');
+	if (box) {
+		var msg = document.getElementById('rn-reactmsg'), busy = false, state = box.getAttribute('data-state');
+		box.addEventListener('click', function (e) {
+			var b = e.target.closest ? e.target.closest('.rn-react') : null;
+			if (!b) { return; }
+			if (state === 'guest') { window.location.href = box.getAttribute('data-login'); return; }
+			if (state !== 'ok') { if (msg) { msg.textContent = 'Reactions open once the author approves your account.'; } return; }
+			if (busy) { return; }
+			busy = true;
+			var fd = new FormData();
+			fd.append('action', 'dm_react');
+			fd.append('nonce', box.getAttribute('data-nonce'));
+			fd.append('chapter', box.getAttribute('data-chapter'));
+			fd.append('kind', b.getAttribute('data-kind'));
+			fetch(box.getAttribute('data-ajax'), { method: 'POST', body: fd, credentials: 'same-origin' })
+				.then(function (r) { return r.json(); })
+				.then(function (j) {
+					if (!j || !j.success) { throw new Error('failed'); }
+					[].forEach.call(box.querySelectorAll('.rn-react'), function (x) {
+						var k = x.getAttribute('data-kind'), n = j.data.counts[k] || 0, on = j.data.mine === k;
+						x.querySelector('.rn-rcount').textContent = n ? n : '';
+						x.classList.toggle('on', on);
+						x.setAttribute('aria-pressed', on ? 'true' : 'false');
+					});
+					if (msg) { msg.textContent = ''; }
+				})
+				.catch(function () { if (msg) { msg.textContent = 'Could not save your reaction. Please try again.'; } })
+				.then(function () { busy = false; });
+		});
+	}
+})();

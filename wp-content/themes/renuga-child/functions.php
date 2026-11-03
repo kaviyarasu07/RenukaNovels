@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RN_CHILD_VERSION', '0.9.2' );
+define( 'RN_CHILD_VERSION', '0.10.0' );
 
 function rn_child_setup() {
 	add_theme_support( 'title-tag' );
@@ -101,11 +101,18 @@ function rn_cover( $story ) {
 }
 
 /** Trending: most viewed first (view counts arrive with the stats module), newest as the tie-break. */
+/** Trending = most views in the last 7 days; ties and quiet weeks fall back to total views, then newest. */
 function rn_trending( $limit = 5 ) {
-	$all = get_posts( array( 'post_type' => 'dm_story', 'post_status' => 'publish', 'posts_per_page' => -1 ) );
+	$all  = get_posts( array( 'post_type' => 'dm_story', 'post_status' => 'publish', 'posts_per_page' => -1 ) );
+	$week = function_exists( 'dm_week_views_map' ) ? dm_week_views_map() : array();
 	usort(
 		$all,
-		function ( $a, $b ) {
+		function ( $a, $b ) use ( $week ) {
+			$wa = isset( $week[ $a->ID ] ) ? $week[ $a->ID ] : 0;
+			$wb = isset( $week[ $b->ID ] ) ? $week[ $b->ID ] : 0;
+			if ( $wa !== $wb ) {
+				return $wb <=> $wa;
+			}
 			$va = (int) get_post_meta( $a->ID, 'dm_views', true );
 			$vb = (int) get_post_meta( $b->ID, 'dm_views', true );
 			return $vb <=> $va ?: strcmp( $b->post_date, $a->post_date );
@@ -150,7 +157,7 @@ function rn_library_card( $story ) {
 			<h2 lang="ta"><a href="<?php echo esc_url( get_permalink( $story ) ); ?>"><?php echo esc_html( get_the_title( $story ) ); ?></a></h2>
 			<?php if ( $teaser ) : ?><p class="rn-teaser" lang="ta"><?php echo esc_html( $teaser ); ?></p><?php endif; ?>
 			<div class="rn-libmeta">
-				<?php if ( $views > 0 ) : ?><span><?php echo esc_html( number_format_i18n( $views ) ); ?> Views</span><?php endif; ?>
+				<?php if ( $views > 0 ) : ?><span><?php echo esc_html( number_format_i18n( $views ) ); ?> <?php echo 1 === $views ? 'View' : 'Views'; ?></span><?php endif; ?>
 				<span><?php echo (int) $episodes; ?> Episode<?php echo 1 === $episodes ? '' : 's'; ?></span>
 				<?php echo rn_rating_html( $story->ID ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 				<span class="rn-pill <?php echo 'completed' === $status ? 'teal' : 'solid'; ?>"><?php echo 'completed' === $status ? 'Completed' : 'Ongoing'; ?></span>
@@ -172,7 +179,7 @@ function rn_trend_row( $story, $rank ) {
 	<a class="rn-trend" href="<?php echo esc_url( get_permalink( $story ) ); ?>">
 		<span class="rn-rank"><?php echo (int) $rank; ?></span>
 		<span class="rn-tcover"><?php echo rn_cover( $story ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-		<span class="rn-ttext"><strong lang="ta"><?php echo esc_html( get_the_title( $story ) ); ?></strong><span class="rn-muted" style="font-size:13px"><?php echo 'completed' === dm_story_status( $story->ID ) ? 'Completed' : 'Ongoing'; ?><?php echo $ch ? ' · Chapter ' . (int) get_post_meta( $ch->ID, 'dm_chapter_no', true ) : ''; ?><?php echo $views > 0 ? ' · ' . esc_html( number_format_i18n( $views ) ) . ' views' : ''; ?><?php echo rn_rating_html( $story->ID ) ? ' · ' . rn_rating_html( $story->ID ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></span></span>
+		<span class="rn-ttext"><strong lang="ta"><?php echo esc_html( get_the_title( $story ) ); ?></strong><span class="rn-muted" style="font-size:13px"><?php echo 'completed' === dm_story_status( $story->ID ) ? 'Completed' : 'Ongoing'; ?><?php echo $ch ? ' · Chapter ' . (int) get_post_meta( $ch->ID, 'dm_chapter_no', true ) : ''; ?><?php echo $views > 0 ? ' · ' . esc_html( number_format_i18n( $views ) ) . ( 1 === $views ? ' view' : ' views' ) : ''; ?><?php echo rn_rating_html( $story->ID ) ? ' · ' . rn_rating_html( $story->ID ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></span></span>
 		<span class="rn-rd">Read</span>
 	</a>
 	<?php
@@ -264,4 +271,52 @@ function rn_account_pager( $total, $page, $tab, $scope = 'all', $per = 20 ) {
 		)
 	);
 	return $links ? '<nav class="rn-pager" aria-label="Pages">' . $links . '</nav>' : '';
+}
+
+
+/** Small inline icons, sized 1em so they follow the text. */
+function rn_icon( $name ) {
+	$paths = array(
+		'eye'  => '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
+		'chat' => '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+		'book' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/>',
+	);
+	if ( ! isset( $paths[ $name ] ) ) {
+		return '';
+	}
+	return '<svg class="rn-ico" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $paths[ $name ] . '</svg>';
+}
+
+/** Rough reading time in minutes (about 180 words a minute), at least 1. */
+function rn_min_read( $post ) {
+	$text  = trim( wp_strip_all_tags( $post->post_content ) );
+	$words = '' === $text ? 0 : count( preg_split( '/\s+/u', $text ) );
+	return max( 1, (int) ceil( $words / 180 ) );
+}
+
+function rn_views_label( $n ) {
+	return number_format_i18n( (int) $n ) . ( 1 === (int) $n ? ' view' : ' views' );
+}
+
+/**
+ * One episode in a list (story page and the reading-page side list).
+ * The dot and the small tag show: current episode (set here), read (set by JS from this browser), or not read yet.
+ */
+function rn_ep_item( $chapter, $current_id = 0, $counts = array() ) {
+	$no      = (int) get_post_meta( $chapter->ID, 'dm_chapter_no', true );
+	$views   = (int) get_post_meta( $chapter->ID, 'dm_views', true );
+	$cmts    = isset( $counts[ $chapter->ID ] ) ? (int) $counts[ $chapter->ID ] : 0;
+	$current = (int) $current_id === (int) $chapter->ID;
+	ob_start();
+	?>
+	<a class="rn-ep<?php echo $current ? ' is-current' : ''; ?>" href="<?php echo esc_url( get_permalink( $chapter ) ); ?>" data-ch="<?php echo (int) $chapter->ID; ?>"<?php echo $current ? ' aria-current="page"' : ''; ?>>
+		<span class="rn-dot" aria-hidden="true"></span>
+		<span class="rn-eptext">
+			<span class="rn-epno">Episode <?php echo (int) $no; ?> <span class="rn-state"><?php echo $current ? 'Reading now' : ''; ?></span></span>
+			<span class="rn-eptitle" lang="ta"><?php echo esc_html( get_the_title( $chapter ) ); ?></span>
+			<span class="rn-epmeta"><?php echo esc_html( get_the_date( 'M j, Y', $chapter ) ); ?> <span aria-hidden="true">&middot;</span> <?php echo (int) rn_min_read( $chapter ); ?> min read <span aria-hidden="true">&middot;</span> <?php echo rn_icon( 'eye' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <?php echo esc_html( number_format_i18n( $views ) ); ?><?php echo $cmts ? ' <span aria-hidden="true">&middot;</span> ' . rn_icon( 'chat' ) . ' ' . (int) $cmts : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+		</span>
+	</a>
+	<?php
+	return ob_get_clean();
 }

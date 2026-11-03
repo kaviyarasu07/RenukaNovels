@@ -13,12 +13,25 @@ $chapters = dm_story_chapters( get_the_ID() );
 		</div>
 		<?php
 		$sid                = get_the_ID();
+		$rn_counts          = dm_comment_counts_all();
+		$rn_views           = (int) get_post_meta( $sid, 'dm_views', true );
 		list( $avg, $cnt )  = dm_rating_summary( $sid );
 		$mine               = dm_user_rating( $sid );
 		$st                 = dm_user_status();
 		$rmsg               = isset( $_GET['dm_msg'] ) && 'rated' === $_GET['dm_msg']; // phpcs:ignore WordPress.Security.NonceVerification
 		?>
-		<section class="rn-card rn-rate" id="rate" aria-labelledby="rn-rate-h">
+		<div class="rn-storymeta"><span><?php echo rn_icon( 'eye' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <?php echo esc_html( rn_views_label( $rn_views ) ); ?></span><span><?php echo rn_icon( 'book' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> <?php echo (int) count( $chapters ); ?> episode<?php echo 1 === count( $chapters ) ? '' : 's'; ?></span></div>
+		<section class="rn-eplist rn-eplist-page" aria-labelledby="rn-eps-h" data-readlist="<?php echo (int) $sid; ?>">
+			<div class="rn-ephead">
+				<h2 id="rn-eps-h">All Episodes</h2>
+				<span class="rn-muted rn-readcount" data-readcount>0 / <?php echo (int) count( $chapters ); ?> read</span>
+			</div>
+			<div class="rn-eps">
+				<?php foreach ( $chapters as $c ) { echo rn_ep_item( $c, 0, $rn_counts ); } // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				<?php if ( ! $chapters ) : ?><p class="rn-muted">No episode has been published yet.</p><?php endif; ?>
+			</div>
+		</section>
+		<section class="rn-card rn-rate rn-rate-s" id="rate" aria-labelledby="rn-rate-h">
 			<h2 id="rn-rate-h">Rate this story</h2>
 			<div class="rn-ratesum"><?php echo $cnt ? '<span class="rn-star" aria-hidden="true">&#9733;</span> <strong>' . esc_html( number_format_i18n( $avg, 1 ) ) . '</strong> <span class="rn-muted">(' . (int) $cnt . ' rating' . ( 1 === $cnt ? '' : 's' ) . ')</span>' : '<span class="rn-muted">No ratings yet.</span>'; // phpcs:ignore WordPress.Security.EscapeOutput ?></div>
 			<?php if ( 'approved' === $st ) : ?>
@@ -37,13 +50,7 @@ $chapters = dm_story_chapters( get_the_ID() );
 				<p style="margin:0"><a class="rn-btn" href="<?php echo esc_url( dm_login_page_url( array( 'redirect_to' => get_permalink() ) ) ); ?>">Log in to rate</a></p>
 			<?php endif; ?>
 		</section>
-		<h2>Chapters</h2>
-		<div class="rn-chlist">
-			<?php foreach ( $chapters as $c ) : ?>
-				<a href="<?php echo esc_url( get_permalink( $c ) ); ?>"><span lang="ta"><?php echo esc_html( get_the_title( $c ) ); ?></span><span class="rn-muted">Chapter <?php echo (int) get_post_meta( $c->ID, 'dm_chapter_no', true ); ?></span></a>
-			<?php endforeach; ?>
-			<?php if ( ! $chapters ) : ?><p class="rn-muted">No chapter has been published yet.</p><?php endif; ?>
-		</div>
+		<?php get_template_part( 'template-parts/comments' ); ?>
 	</article>
 </div>
 <?php
