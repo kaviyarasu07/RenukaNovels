@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DM Core
  * Description: Core features for the Renuga Novels website: stories and chapters, engagement (comments, ratings, bookmarks), view stats, moderation and push notifications.
- * Version:     0.9.0
+ * Version:     0.9.2
  * Author:      Renuga Novels dev team
  * Text Domain: dm-core
  *
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'DM_CORE_VERSION', '0.9.0' );
+define( 'DM_CORE_VERSION', '0.9.2' );
 define( 'DM_CORE_PATH', plugin_dir_path( __FILE__ ) );
 
 /**

@@ -54,6 +54,17 @@ function dm_register_post_types() {
 }
 add_action( 'init', 'dm_register_post_types' );
 
+/**
+ * Episodes use the classic editor (title, one big text box, boxes on the right).
+ * In the block editor the side boxes (Story, Chapter number) can be collapsed or hidden by accident
+ * and are easy to lose; in the classic editor they always stay in view.
+ */
+function dm_chapter_classic_editor( $use, $post_type ) {
+	return 'dm_chapter' === $post_type ? false : $use;
+}
+add_filter( 'use_block_editor_for_post_type', 'dm_chapter_classic_editor', 100, 2 );
+add_filter( 'gutenberg_can_edit_post_type', 'dm_chapter_classic_editor', 100, 2 );
+
 /** Story status box: Ongoing or Completed. */
 function dm_add_story_meta_box() {
 	add_meta_box( 'dm_story_status', 'Story status', 'dm_story_status_box', 'dm_story', 'side', 'high' );

@@ -37,6 +37,16 @@ function dm_login_page_url( $args = array() ) {
 
 /** Use our own login page everywhere WordPress asks for the login URL. wp-login.php itself still works. */
 function dm_filter_login_url( $login_url, $redirect ) {
+	// If the Login page has not been created yet (Tools > DM Required Pages), keep WordPress's own login.
+	// Otherwise WordPress sends /login/ to the login URL, which is /login/ again, and the browser loops.
+	static $has_page = null;
+	if ( null === $has_page ) {
+		$page     = get_page_by_path( 'login' );
+		$has_page = ( $page && 'publish' === $page->post_status );
+	}
+	if ( ! $has_page ) {
+		return $login_url;
+	}
 	$args = array();
 	if ( $redirect ) {
 		$args['redirect_to'] = $redirect;
